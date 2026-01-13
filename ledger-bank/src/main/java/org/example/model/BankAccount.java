@@ -2,13 +2,20 @@ package org.example.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
+/**
+ * Core banking account entity.
+ * Uses @Version for optimistic locking to prevent concurrent balance updates.
+ */
 @Entity
 @Table(name = "accounts")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BankAccount {
@@ -20,16 +27,45 @@ public class BankAccount {
     @Column(name = "user_name")
     private String userName;
 
-    @Column(name = "current_balance")
+    @Column(name = "current_balance", nullable = false)
     private BigDecimal currentBalance;
 
     @Column(name = "avg_monthly_balance")
     private BigDecimal avgMonthlyBalance; // Baseline for ML
 
+    @Builder.Default
     @Column(name = "frozen_status")
     private boolean frozenStatus = false; // True if ML detects Money Laundering
 
-    // Note: Added this field so we can actually verify the PIN
     @Column(name = "mpin_hash")
     private String mpinHash;
+
+    /**
+     * Version field for optimistic locking.
+     * JPA will automatically check and increment this on each update.
+     * Throws OptimisticLockException if concurrent modification detected.
+     */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    /**
+     * Debits amount from account balance.
+     * @param amount Amount to debit
+     * @throws IllegalStateException if insufficient balance
+     */
+    public void debit(BigDecimal amount) {
+        if (currentBalance.compareTo(amount) < 0) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+        this.currentBalance = this.currentBalance.subtract(amount);
+    }
+
+    /**
+     * Credits amount to account balance.
+     * @param amount Amount to credit
+     */
+    public void credit(BigDecimal amount) {
+        this.currentBalance = this.currentBalance.add(amount);
+    }
 }

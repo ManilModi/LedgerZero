@@ -90,6 +90,8 @@ public class RouterService {
 
         String payerBank = payerVpa.getLinkedBankHandle();
         String payeeBank = payeeVpa.getLinkedBankHandle();
+        String payerAccountNumber = payerVpa.getAccountRef();
+        String payeeAccountNumber = payeeVpa.getAccountRef();
 
         log.info("Routing: {} ({}) -> {} ({})",
                 request.getPayerVpa(), payerBank,
@@ -128,7 +130,7 @@ public class RouterService {
         }
 
         // Step 5: Debit from payer's bank
-        TransactionResponse debitResponse = bankClient.debit(request, payerBank);
+        TransactionResponse debitResponse = bankClient.debit(request, payerBank, payerAccountNumber, riskScore);
         if (debitResponse.getStatus() != TransactionStatus.SUCCESS) {
             log.error("Debit failed for txnId {}: {}", txnId, debitResponse.getMessage());
             transaction.setStatus("FAILED");
@@ -142,12 +144,12 @@ public class RouterService {
         }
 
         // Step 6: Credit to payee's bank
-        TransactionResponse creditResponse = bankClient.credit(request, payeeBank);
+        TransactionResponse creditResponse = bankClient.credit(request, payeeBank, payeeAccountNumber, riskScore);
         if (creditResponse.getStatus() != TransactionStatus.SUCCESS) {
             log.error("Credit failed for txnId {}: {}. Initiating reversal.", txnId, creditResponse.getMessage());
 
             // Reversal: Return money to payer
-            bankClient.reverse(request, payerBank);
+            bankClient.reverse(request, payerBank, payerAccountNumber);
 
             transaction.setStatus("FAILED");
             transactionRepository.save(transaction);

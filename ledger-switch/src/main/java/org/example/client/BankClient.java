@@ -37,59 +37,73 @@ public class BankClient {
     /**
      * Sends debit request to the payer's bank.
      *
-     * @param request    Payment request with transaction details
-     * @param bankHandle Bank identifier ("AXIS" or "SBI")
+     * @param request       Payment request with transaction details
+     * @param bankHandle    Bank identifier ("AXIS" or "SBI")
+     * @param accountNumber Account number to debit from (from VPA lookup)
+     * @param riskScore     ML risk score for audit trail
      * @return TransactionResponse from the bank
      */
-    public TransactionResponse debit(PaymentRequest request, String bankHandle) {
+    public TransactionResponse debit(PaymentRequest request, String bankHandle, 
+                                     String accountNumber, double riskScore) {
         String bankUrl = resolveBankUrl(bankHandle);
         String url = bankUrl + "/api/bank/debit";
 
-        log.info("Sending DEBIT request to {} for txnId: {}", bankHandle, request.getTxnId());
+        log.info("Sending DEBIT request to {} for txnId: {}, account: ****{}", 
+                bankHandle, request.getTxnId(), 
+                accountNumber.substring(Math.max(0, accountNumber.length() - 4)));
 
-        return callBank(url, request, "DEBIT", bankHandle);
+        return callBank(url, request, "DEBIT", bankHandle, accountNumber, riskScore);
     }
 
     /**
      * Sends credit request to the payee's bank.
      *
-     * @param request    Payment request with transaction details
-     * @param bankHandle Bank identifier ("AXIS" or "SBI")
+     * @param request       Payment request with transaction details
+     * @param bankHandle    Bank identifier ("AXIS" or "SBI")
+     * @param accountNumber Account number to credit to (from VPA lookup)
+     * @param riskScore     ML risk score for audit trail
      * @return TransactionResponse from the bank
      */
-    public TransactionResponse credit(PaymentRequest request, String bankHandle) {
+    public TransactionResponse credit(PaymentRequest request, String bankHandle, 
+                                      String accountNumber, double riskScore) {
         String bankUrl = resolveBankUrl(bankHandle);
         String url = bankUrl + "/api/bank/credit";
 
-        log.info("Sending CREDIT request to {} for txnId: {}", bankHandle, request.getTxnId());
+        log.info("Sending CREDIT request to {} for txnId: {}, account: ****{}", 
+                bankHandle, request.getTxnId(), 
+                accountNumber.substring(Math.max(0, accountNumber.length() - 4)));
 
-        return callBank(url, request, "CREDIT", bankHandle);
+        return callBank(url, request, "CREDIT", bankHandle, accountNumber, riskScore);
     }
 
     /**
      * Sends reversal request to rollback a failed transaction.
      *
-     * @param request    Original payment request
-     * @param bankHandle Bank to reverse on
+     * @param request       Original payment request
+     * @param bankHandle    Bank to reverse on
+     * @param accountNumber Account to reverse debit on
      * @return TransactionResponse indicating reversal status
      */
-    public TransactionResponse reverse(PaymentRequest request, String bankHandle) {
+    public TransactionResponse reverse(PaymentRequest request, String bankHandle, String accountNumber) {
         String bankUrl = resolveBankUrl(bankHandle);
         String url = bankUrl + "/api/bank/reverse";
 
         log.info("Sending REVERSE request to {} for txnId: {}", bankHandle, request.getTxnId());
 
-        return callBank(url, request, "REVERSE", bankHandle);
+        return callBank(url, request, "REVERSE", bankHandle, accountNumber, 0.0);
     }
 
     /**
-     * Common method to call bank endpoints.
+     * Common method to call bank endpoints with required headers.
      */
     private TransactionResponse callBank(String url, PaymentRequest request,
-                                         String operation, String bankHandle) {
+                                         String operation, String bankHandle,
+                                         String accountNumber, double riskScore) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Account-Number", accountNumber);
+            headers.set("X-Risk-Score", String.valueOf(riskScore));
 
             HttpEntity<PaymentRequest> entity = new HttpEntity<>(request, headers);
 

@@ -85,14 +85,18 @@ public class PaymentInitiationService {
         String txnId = generateTransactionId();
         log.info("Initiating payment: {} -> {} | Amount: {} | TxnId: {}",
                 MaskingUtil.maskVpa(payerVpa), MaskingUtil.maskVpa(payeeVpa), amount, txnId);
+        log.debug("DEBUG: Actual VPAs received - Payer: [{}], Payee: [{}]", payerVpa, payeeVpa);
 
         // Step 1: Validate sender exists
         Optional<User> senderOpt = userRepository.findByVpa(payerVpa);
+        log.debug("DEBUG: Query result for payerVpa: senderOpt.isPresent() = {}", senderOpt.isPresent());
         if (senderOpt.isEmpty()) {
             log.warn("Sender VPA not found: {}", MaskingUtil.maskVpa(payerVpa));
             return buildFailedResponse(txnId, "Sender VPA not registered");
         }
         User sender = senderOpt.get();
+        log.debug("DEBUG: Loaded user - userId: {}, vpa: {}, fullName: {}", 
+                sender.getUserId(), sender.getVpa(), sender.getFullName());
 
         // Step 2: Check KYC status
         if (!"VERIFIED".equals(sender.getKycStatus())) {
