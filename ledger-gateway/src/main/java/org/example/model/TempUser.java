@@ -4,16 +4,18 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "temp_users",
+    indexes = {
+        @Index(columnList = "phone_number", unique = true)
+    }
+)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
-
+public class TempUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
@@ -25,21 +27,8 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "kyc_status")
-    @Enumerated(EnumType.STRING)
-    private Enums.KycStatus kycStatus; // 'PENDING', 'VERIFIED'
-
-    @Column(name = "risk_score")
-    private BigDecimal riskScore; // Calculated by ML daily
-
-    @Column(name = "dob")
-    private String dob; // Format: DD-MM-YYYY
-
-    @Column(name = "gender")
-    private String gender; // M or F
-
-    @Column(name = "pincode")
-    private String pincode;
+    @Column(name = "otp")
+    private String otp;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
