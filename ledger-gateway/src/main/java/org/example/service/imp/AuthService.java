@@ -1,119 +1,334 @@
 package org.example.service.imp;
 
-import org.example.dto.auth.AadharVerificationReq;
-import org.example.dto.auth.PhoneOtpVerificationReq;
-import org.example.dto.auth.PhoneVerificationReq;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
+import org.example.dataModel.UserDeviceData;
+import org.example.dto.auth.*;
 import org.example.dto.common.Response;
 import org.example.model.Enums;
 import org.example.model.TempUser;
 import org.example.model.User;
+import org.example.model.UserDevice;
+import org.example.repository.DeviceRepository;
 import org.example.repository.TempUserRepo;
-import org.example.repository.UserRepo;
+import org.example.repository.UserRepository;
 import org.example.service.IAuth;
+import org.example.utils.CookieUtil;
+import org.example.utils.CryptoUtil;
+import org.example.utils.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.security.SecureRandom;
+import java.util.*;
 
 @Service
 public class AuthService implements IAuth {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     @Autowired
     private SnsClient snsClient;
 
     @Autowired
-    private UserRepo userRepo;
+    private UserRepository userRepo;
 
     @Autowired
     private TempUserRepo tempUserRepo;
 
     @Autowired
-    private TokenManagerService tokenManagerService;
+    private DeviceRepository deviceRepository;
 
-    @Value("")
-    private String api_key;
+    @Value("${jwt.secret-key}")
+    private String jwtKey;
+
+    //jwt time
+    private final int exTime = 24*60*60; //in sec
+
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    //converter UserDevice to UserDeviceData
+    private UserDeviceData userDeviceToUserDeviceData(UserDevice userDevice){
+        UserDeviceData userDeviceData = new UserDeviceData();
+        userDeviceData.setDeviceId(userDevice.getDeviceId());
+        userDeviceData.setLastLoginIp(userDevice.getLastLoginIp());
+        userDeviceData.setModelName(userDevice.getModelName());
+        userDeviceData.setOsVersion(userDevice.getOsVersion());
+        userDeviceData.setTrusted(userDevice.isTrusted());
+        return userDeviceData;
+    }
+
+    //save user into jwt and cookie
+    private  void jwtAndCookie(HttpServletResponse response, User user){
+        //1. jwt token gen
+
+        List<UserDevice> devices = deviceRepository.findByUser(user);
+        List<UserDeviceData> userDeviceDatas = devices.stream().map(this::userDeviceToUserDeviceData).toList();
+        String jwtToken = JwtUtil.generateJWTToken(jwtKey, exTime, user.getUserId(), user.getPhoneNumber(), user.getFullName(), userDeviceDatas);
+
+        //2. save into cookie
+        CookieUtil.createJwtCookie(response, jwtToken, exTime);
+    }
 
 
     public Response sendOtpToPhone(PhoneVerificationReq req) {
 
-        //config
-        Map<String, MessageAttributeValue> smsAttributes = new HashMap<>();
-        smsAttributes.put("AWS.SNS.SMS.SMSType", MessageAttributeValue.builder()
-                .stringValue("Transactional")
-                .dataType("String")
-                .build());
-
         //1. get phono no
         String phoneNumber = req.getPhoneNumber();
+        log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
+
+        //check phone-no is present or not into db
+        User exitUser = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
+
+        if(exitUser != null){
+            log.warn("OTP request failed, phone already registered. phoneNumber={}", phoneNumber);
+            return new Response("Phone number already registered", 400, null, null);
+        }
 
         //2. otp gen
-        String otp = String.format("%06d", new Random().nextInt(999999));
+        int otpValue = 100000 + secureRandom.nextInt(900000); // Always 6 digits
+        String otp = String.valueOf(otpValue);
 
         //3. store otp
         TempUser tempUser = new TempUser();
         tempUser.setPhoneNumber(phoneNumber);
         tempUser.setOtp(otp);
         tempUserRepo.save(tempUser);
-
-        //4. Construct Message
-        String message = "Your LedgerZero Verification OTP is: " + otp;
+        log.info("OTP stored temporarily for phoneNumber={}", phoneNumber);
 
         try {
             // 5. Call AWS SNS
+            PublishResponse result = snsClient.publish(
+                    PublishRequest.builder()
+                            .message("Your LedgerZero Verification OTP is: " + otp)
+                            .phoneNumber(phoneNumber)
+                            .build()
+            );
 
-            PublishRequest request = PublishRequest.builder()
-                    .message(message)
-                    .phoneNumber(phoneNumber)
-                    .messageAttributes(smsAttributes)
-                    .build();
+            log.info("OTP sent successfully. phoneNumber={}, messageId={}",
+                    phoneNumber, result.messageId());
 
-            PublishResponse result = snsClient.publish(request);
-
-            System.out.println("OTP sent to " + phoneNumber + ". MessageId: " + result.messageId());
             return new Response("OTP sent to " + phoneNumber, 200, null, null);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
+            log.error("Error while sending OTP. phoneNumber={}", phoneNumber, e);
             return new Response("Error found", 500, e.toString(), null);
         }
     }
 
     public Response checkOtpToPhone(PhoneOtpVerificationReq req) {
+
+        //1. get user's entered data
         String phoneNumber = req.getPhoneNumber();
         String otp = req.getOtp();
+        log.info("checkOtpToPhone called for phoneNumber={}", phoneNumber);
 
+        //2. check user's present or not
         TempUser tempUser = tempUserRepo.findByPhoneNumber(phoneNumber);
 
+        //3. verify via otp
         if(tempUser != null && tempUser.getOtp().equals(otp)){
+            log.info("OTP verified successfully for phoneNumber={}", phoneNumber);
+
             User user = new User();
             user.setPhoneNumber(phoneNumber);
             user.setKycStatus(Enums.KycStatus.PENDING);
             userRepo.save(user);
 
             tempUserRepo.delete(tempUser);
+            log.info("TempUser deleted and User created. phoneNumber={}", phoneNumber);
 
             return new Response("OTP verified successfully", 200, null, null);
         }
 
+        log.warn("OTP verification failed. phoneNumber={}", phoneNumber);
         return new Response("OTP verification failed", 400, null, null);
     }
 
-    public Response sendOtpToAadhar(AadharVerificationReq req){
+    public Response completeRegistration(HttpServletResponse response, CreateUserReq req){
+        //1. get user's data
+        String phoneNumber = req.getPhoneNumber();
+        String password = req.getPassword();
+        String fullName = req.getFullName();
+        String deviceId = req.getDeviceId();
+        String lastLoginIp = req.getLastLoginIp();
+        String modelName = req.getModelName();
+        String osVersion = req.getOsVersion();
+        log.info("completeRegistration started for phoneNumber={}", phoneNumber);
 
-        String url = "https://api.sandbox.co.in/kyc/aadhaar/okyc/otp";
-        String entity = "in.co.sandbox.kyc.aadhaar.okyc.otp.request";
-        
+        //2. generate salt
+        String salt = CryptoUtil.generateSalt();
 
-        String authToken = tokenManagerService.getAccessToken();
+        //3. hashed password
+        String hashedPassword = CryptoUtil.hashMpinWithSalt(password, salt);
 
-        return null;
+        //4. save user into db
+        User user = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
+        if(user == null){
+            log.warn("User not found during registration. phoneNumber={}", phoneNumber);
+            return new Response("User not found", 400, null, null);
+        }
+
+        log.info("User found, proceeding with registration. userId={}", user.getUserId());
+        user.setSalt(salt);
+        user.setPassword(hashedPassword);
+        user.setFullName(fullName);
+        user.setKycStatus(Enums.KycStatus.APPROVED);
+        userRepo.save(user);
+
+
+        //5. create user's device
+        UserDevice userDevice = new UserDevice();
+        userDevice.setDeviceId(deviceId);
+        userDevice.setUser(user);
+        userDevice.setTrusted(true);
+        userDevice.setLastLoginIp(lastLoginIp);
+        userDevice.setModelName(modelName);
+        userDevice.setOsVersion(osVersion);
+        deviceRepository.save(userDevice);
+        log.info("New device registered. deviceId={}, userId={}",
+                req.getDeviceId(), user.getUserId());
+
+        List<UserDeviceData> devices = new ArrayList<>();
+        devices.add(userDeviceToUserDeviceData(userDevice));
+
+        //6. create jwt token
+        String jwtToken = JwtUtil.generateJWTToken(jwtKey, exTime*1000, user.getUserId(), user.getPhoneNumber(), user.getFullName(), devices);
+
+        //7. saved into cookie
+        CookieUtil.createJwtCookie(response, jwtToken, exTime);
+        log.info("JWT generated and cookie set for userId={}", user.getUserId());
+
+        return new Response(
+                "User auto-login successful",
+                200,
+                null,
+                Collections.singletonMap("jwt", jwtToken)
+        );
+
     }
+
+
+    //login
+    public Response login(HttpServletResponse response, LoginReq req){
+        //1. get data
+        String phoneNumber = req.getPhoneNumber();
+        String password = req.getPassword();
+        String deviceId = req.getDeviceId();
+        log.info("Login attempt. phoneNumber={}, deviceId={}", phoneNumber, deviceId);
+
+        //2. check user exits or not
+        User user = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
+        if(user == null){
+            log.warn("Login failed. User not found. phoneNumber={}", phoneNumber);
+            return new Response("Invalid credentials", 401, null, null);
+        }
+
+        //3. check password
+        String hashedPassword = CryptoUtil.hashMpinWithSalt(password, user.getSalt());
+        if(!Objects.equals(user.getPassword(), hashedPassword)){
+            log.warn("Login failed. Invalid password. phoneNumber={}", phoneNumber);
+            return new Response("Invalid password", 400, null, null);
+        }
+
+        //4. check a device
+        if(deviceId == null){
+            return new Response("Device ID is required", 400, null, null);
+        }
+
+        //5. valid device
+        Optional<UserDevice> device = deviceRepository.findByDeviceId(deviceId);
+
+        if(device.isEmpty()){
+
+            log.info("New device detected, sending OTP. phoneNumber={}", phoneNumber);
+
+            //6. send otp and verify device
+            PhoneVerificationReq phoneVerificationReq = new PhoneVerificationReq();
+            phoneVerificationReq.setPhoneNumber(phoneNumber);
+            Response res = sendOtpToPhone(phoneVerificationReq);
+            return new Response(res.getMessage(),res.getStatusCode(),res.getError(), res.getData());
+        }else if(device.get().isTrusted()){
+            log.info("Trusted device login success. userId={}", user.getUserId());
+            //7. jwt and cookie
+            jwtAndCookie(response, user);
+            return new Response("Login successful", 200, null, null);
+        }
+
+
+        log.warn("Login failed. Untrusted device. phoneNumber={}", phoneNumber);
+
+        return new Response(
+                "InValid credentials",
+                401,
+                null,
+                null
+        );
+    }
+
+    //check otp during device changing
+    @Transactional
+    public Response changingDevice(HttpServletResponse response, DeviceChangeReq req){
+        //1. get details
+        String phoneNumber = req.getPhoneNumber();
+        String otp = req.getOtp();
+        log.info("Device change OTP verification started. phoneNumber={}", phoneNumber);
+
+        //2. check user's present or not
+        TempUser tempUser = tempUserRepo.findByPhoneNumber(phoneNumber);
+
+        //3. verify via otp
+        if(tempUser != null && tempUser.getOtp().equals(otp)){
+            log.info("Device change OTP verified. phoneNumber={}", phoneNumber);
+
+            tempUserRepo.delete(tempUser);
+
+           //4. get main user
+            User user = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
+
+            if(user == null){
+                return new Response("User not found", 400, null, null);
+            }
+
+            //5. update old devices
+            deviceRepository.updateDeviceByUserPhoneNumber(user.getPhoneNumber());
+            log.info("All previous devices marked untrusted. userId={}", user.getUserId());
+
+            //6. add new device
+            UserDevice userDevice = new UserDevice();
+            userDevice.setDeviceId(req.getDeviceId());
+            userDevice.setUser(user);
+            userDevice.setTrusted(true);
+            userDevice.setLastLoginIp(req.getLastLoginIp());
+            userDevice.setModelName(req.getModelName());
+            userDevice.setOsVersion(req.getOsVersion());
+            deviceRepository.save(userDevice);
+            log.info("New device added and trusted. deviceId={}, userId={}",
+                    req.getDeviceId(), user.getUserId());
+
+            //7. jwt and cookie
+            jwtAndCookie(response, user);
+            log.info("JWT regenerated after device change. userId={}", user.getUserId());
+            return new Response("OTP verified successfully", 200, null, null);
+
+        }
+        log.warn("Device change OTP verification failed. phoneNumber={}", phoneNumber);
+        return new Response("OTP verification failed", 400, null, null);
+
+    }
+
+    //logout
+    public Response logout(HttpServletResponse response){
+        log.info("Logout requested");
+        // remove jwt token from cookie
+        CookieUtil.clearJwtCookie(response);
+        log.info("JWT cookie cleared");
+        return new Response("Logout successful", 200, null, null);
+    }
+
 }

@@ -9,5 +9,4 @@ import lombok.*;
 @NoArgsConstructor
 public class PhoneVerificationReq {
     private String phoneNumber;
-    private String name;
 }

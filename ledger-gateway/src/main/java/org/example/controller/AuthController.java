@@ -1,7 +1,7 @@
 package org.example.controller;
 
-import org.example.dto.auth.PhoneOtpVerificationReq;
-import org.example.dto.auth.PhoneVerificationReq;
+import jakarta.servlet.http.HttpServletResponse;
+import org.example.dto.auth.*;
 import org.example.dto.common.Response;
 import org.example.service.IAuth;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,12 +21,33 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public Response sendOtp(@RequestBody PhoneVerificationReq req) {
-        return authService.sendOtp(req);
+        return authService.sendOtpToPhone(req);
     }
 
     @PostMapping("/check-otp")
     public  Response checkOtp(@RequestBody PhoneOtpVerificationReq req){
-        return authService.checkOtp(req);
+        return authService.checkOtpToPhone(req);
     }
+
+    @PostMapping("/register")
+    public Response completeRegistration(HttpServletResponse response, @RequestBody CreateUserReq req) {
+        return authService.completeRegistration(response, req);
+    }
+
+    @PostMapping("/login")
+    public Response login(HttpServletResponse response, @RequestBody LoginReq req){
+        return authService.login(response, req);
+    }
+
+    @PostMapping("/logout")
+    public Response logout(HttpServletResponse response){
+        return authService.logout(response);
+    }
+
+    @PostMapping("/change-device")
+    public Response changingDevice(HttpServletResponse response, @RequestBody DeviceChangeReq req){
+        return authService.changingDevice(response, req);
+    }
+
 
 }

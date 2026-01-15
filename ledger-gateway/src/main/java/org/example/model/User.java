@@ -25,21 +25,21 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
+    @Column(name = "vpa", unique = true, nullable = false)
+    private String vpa;  // Virtual Payment Address (e.g., "alice@l0")
+
     @Column(name = "kyc_status")
     @Enumerated(EnumType.STRING)
     private Enums.KycStatus kycStatus; // 'PENDING', 'VERIFIED'
 
+    @Column(name = "salt")
+    private String salt;
+
+    @Column(name = "password")
+    private String password;
+
     @Column(name = "risk_score")
     private BigDecimal riskScore; // Calculated by ML daily
-
-    @Column(name = "dob")
-    private String dob; // Format: DD-MM-YYYY
-
-    @Column(name = "gender")
-    private String gender; // M or F
-
-    @Column(name = "pincode")
-    private String pincode;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();

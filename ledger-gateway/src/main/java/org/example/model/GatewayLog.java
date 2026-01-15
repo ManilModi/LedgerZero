@@ -25,10 +25,10 @@ public class GatewayLog {
     private BigDecimal txnAmount;
 
     // --- ML Features ---
-    @Column(name = "ip_address", nullable = false)
+    @Column(name = "ip_address")
     private String ipAddress;
 
-    @Column(name = "device_id", nullable = false)
+    @Column(name = "device_id")
     private String deviceId;
 
     @Column(name = "geo_lat")
