@@ -24,9 +24,6 @@ public class TempUser {
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
 
-    @Column(name = "full_name")
-    private String fullName;
-
     @Column(name = "otp")
     private String otp;
 

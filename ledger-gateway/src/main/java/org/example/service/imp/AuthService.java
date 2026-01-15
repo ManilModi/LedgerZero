@@ -65,7 +65,7 @@ public class AuthService implements IAuth {
     }
 
     //save user into jwt and cookie
-    private  void jwtAndCookie(HttpServletResponse response, User user){
+    private  String jwtAndCookie(HttpServletResponse response, User user){
         //1. jwt token gen
 
         List<UserDevice> devices = deviceRepository.findByUser(user);
@@ -74,24 +74,14 @@ public class AuthService implements IAuth {
 
         //2. save into cookie
         CookieUtil.createJwtCookie(response, jwtToken, exTime);
+
+        //3. return
+        return jwtToken;
     }
 
-
-    public Response sendOtpToPhone(PhoneVerificationReq req) {
-
-        //1. get phono no
-        String phoneNumber = req.getPhoneNumber();
-        log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
-
-        //check phone-no is present or not into db
-        User exitUser = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
-
-        if(exitUser != null){
-            log.warn("OTP request failed, phone already registered. phoneNumber={}", phoneNumber);
-            return new Response("Phone number already registered", 400, null, null);
-        }
-
-        //2. otp gen
+    //utility
+    private Response sendOtp(String phoneNumber){
+        //1. otp gen
         int otpValue = 100000 + secureRandom.nextInt(900000); // Always 6 digits
         String otp = String.valueOf(otpValue);
 
@@ -119,6 +109,33 @@ public class AuthService implements IAuth {
             log.error("Error while sending OTP. phoneNumber={}", phoneNumber, e);
             return new Response("Error found", 500, e.toString(), null);
         }
+    }
+
+    //send otp for new device
+    private Response sendOtpForNewDevice(PhoneVerificationReq req) {
+
+        //1. get phono no
+        String phoneNumber = req.getPhoneNumber();
+        log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
+        return sendOtp(phoneNumber);
+    }
+
+
+    public Response sendOtpToPhone(PhoneVerificationReq req) {
+
+        //1. get phono no
+        String phoneNumber = req.getPhoneNumber();
+        log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
+
+        //check phone-no is present or not into db
+        User exitUser = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
+
+        if(exitUser != null){
+            log.warn("OTP request failed, phone already registered. phoneNumber={}", phoneNumber);
+            return new Response("Phone number already registered", 400, null, null);
+        }
+
+        return sendOtp(phoneNumber);
     }
 
     public Response checkOtpToPhone(PhoneOtpVerificationReq req) {
@@ -251,13 +268,15 @@ public class AuthService implements IAuth {
             //6. send otp and verify device
             PhoneVerificationReq phoneVerificationReq = new PhoneVerificationReq();
             phoneVerificationReq.setPhoneNumber(phoneNumber);
-            Response res = sendOtpToPhone(phoneVerificationReq);
+            Response res = sendOtpForNewDevice(phoneVerificationReq);
             return new Response(res.getMessage(),res.getStatusCode(),res.getError(), res.getData());
         }else if(device.get().isTrusted()){
             log.info("Trusted device login success. userId={}", user.getUserId());
             //7. jwt and cookie
-            jwtAndCookie(response, user);
-            return new Response("Login successful", 200, null, null);
+            String jwtToken = jwtAndCookie(response, user);
+            return new Response("Login successful", 200, null,
+                        Collections.singletonMap("jwt", jwtToken)
+                    );
         }
 
 
@@ -312,9 +331,11 @@ public class AuthService implements IAuth {
                     req.getDeviceId(), user.getUserId());
 
             //7. jwt and cookie
-            jwtAndCookie(response, user);
+            String jwtToken = jwtAndCookie(response, user);
             log.info("JWT regenerated after device change. userId={}", user.getUserId());
-            return new Response("OTP verified successfully", 200, null, null);
+            return new Response("Login is successfully", 200, null,
+                    Collections.singletonMap("jwt", jwtToken)
+            );
 
         }
         log.warn("Device change OTP verification failed. phoneNumber={}", phoneNumber);

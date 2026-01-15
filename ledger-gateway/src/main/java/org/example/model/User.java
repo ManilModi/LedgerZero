@@ -25,7 +25,7 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "vpa", unique = true, nullable = false)
+    @Column(name = "vpa", unique = true)
     private String vpa;  // Virtual Payment Address (e.g., "alice@l0")
 
     @Column(name = "kyc_status")
