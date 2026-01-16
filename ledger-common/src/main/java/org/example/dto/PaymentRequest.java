@@ -53,11 +53,4 @@ public class PaymentRequest {
      */
     private FraudCheckData fraudCheckData;
 
-    @Data
-    public static class FraudCheckData {
-        private String ipAddress;
-        private String deviceId;
-        private String location; // Lat,Long
-    }
-
 }
