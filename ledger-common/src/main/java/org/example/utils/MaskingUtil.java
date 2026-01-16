@@ -15,4 +15,17 @@ public class MaskingUtil {
         if (atIndex <= 1) return vpa;
         return vpa.charAt(0) + "***" + vpa.substring(atIndex);
     }
+
+    // helper to print "12343546454" as "****6454" account no masking
+    public static String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || !accountNumber.matches("^[0-9]+$")) return null;
+
+        int length = accountNumber.length();
+        if (length <= 4) {
+            return "****";
+        }
+
+        String lastFour = accountNumber.substring(length - 4);
+        return "*".repeat(length - 4) + lastFour;
+    }
 }

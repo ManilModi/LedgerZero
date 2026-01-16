@@ -72,7 +72,7 @@ public class TransactionService {
             }
 
             // Check frozen status
-            if (account.isFrozenStatus()) {
+            if (account.getFrozenStatus()) {
                 log.warn("Account frozen: {}", maskAccountNumber(accountNumber));
                 return buildResponse(txnId, TransactionStatus.FAILED, "Account is frozen");
             }
@@ -148,7 +148,7 @@ public class TransactionService {
             }
 
             // Check frozen status (even for credits)
-            if (account.isFrozenStatus()) {
+            if (account.getFrozenStatus()) {
                 log.warn("Cannot credit frozen account: {}", maskAccountNumber(accountNumber));
                 return buildResponse(txnId, TransactionStatus.FAILED, "Beneficiary account is frozen");
             }

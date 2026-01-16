@@ -1,7 +1,6 @@
 package org.example.client;
 
-import org.example.dto.PaymentRequest;
-import org.example.dto.TransactionResponse;
+import org.example.dto.*;
 import org.example.enums.TransactionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +86,44 @@ public class SwitchClient {
                     .build();
         }
     }
+
+    /**
+     * get all Available banks list
+     * see all banks into dropdown menu
+     * user select ones
+     */
+    public Response getAllBanks(){
+        String url = switchBaseUrl + "/api/switch/banks";
+        ResponseEntity<Response> response = restTemplate.getForEntity(url, Response.class);
+        return response.getBody();
+    }
+
+    /**
+     * check phoneNo is connected to bank account or not
+     */
+     public Response accountIsExits(BankClientReq req){
+         String url = switchBaseUrl + "/api/switch/account-exits";
+         ResponseEntity<Response> response = restTemplate.postForEntity(url, req, Response.class);
+         return response.getBody();
+     }
+
+    /**
+     * call Switch to generate vpa and get account number
+     *
+     */
+    public Response VPAGenerate(BankClientReq req){
+        String  url = switchBaseUrl + "/api/switch/vpa-generate";
+        ResponseEntity<Response> response = restTemplate.postForEntity(url, req, Response.class);
+        return response.getBody();
+    }
+
+    /**
+     *
+     *
+     *
+     */
+
+
 
     /**
      * Health check for Switch service.

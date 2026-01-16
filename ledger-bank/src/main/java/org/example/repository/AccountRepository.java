@@ -49,4 +49,7 @@ public interface AccountRepository extends JpaRepository<BankAccount, String> {
     @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM BankAccount a " +
            "WHERE a.accountNumber = :accountNumber AND a.frozenStatus = false")
     boolean isAccountActive(@Param("accountNumber") String accountNumber);
+
+
+    Optional<BankAccount> findByPhonoNumber(String phonoNumber);
 }

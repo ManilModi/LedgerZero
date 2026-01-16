@@ -1,8 +1,12 @@
 package org.example.client;
 
-import org.example.dto.PaymentRequest;
-import org.example.dto.TransactionResponse;
+import jakarta.transaction.Transactional;
+import org.example.dto.*;
 import org.example.enums.TransactionStatus;
+import org.example.model.VPARegistry;
+import org.example.repository.VPARegistryRepository;
+import org.example.utils.CryptoUtil;
+import org.example.utils.MaskingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +16,10 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+
+import javax.xml.crypto.Data;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * HTTP Client for communication with Bank services.
@@ -25,13 +33,37 @@ public class BankClient {
     private final RestTemplate restTemplate;
     private final String axisBankUrl;
     private final String sbiBankUrl;
+    private final VPARegistryRepository  vpaRegistryRepository;
 
     public BankClient(RestTemplate restTemplate,
                       @Value("${app.urls.bank.axis}") String axisBankUrl,
-                      @Value("${app.urls.bank.sbi}") String sbiBankUrl) {
+                      @Value("${app.urls.bank.sbi}") String sbiBankUrl,
+                      VPARegistryRepository  vpaRegistryRepository) {
         this.restTemplate = restTemplate;
         this.axisBankUrl = axisBankUrl;
         this.sbiBankUrl = sbiBankUrl;
+        this.vpaRegistryRepository = vpaRegistryRepository;
+    }
+
+    /**
+     * a common template for req-res
+     * helper
+     */
+    private Response callApi(String url, Object reqData){
+        log.info("Calling bank API: {}", url); // NEW
+        //1. set headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //2. entity with headers and body
+        HttpEntity<Object> entity = new HttpEntity<>(reqData, headers);
+
+        //3. api call
+        ResponseEntity<Response> response = restTemplate.postForEntity(url, entity, Response.class);
+        log.info("Getting response from bank: {}", response.getBody());
+        log.info("Calling bank API: {}", url); // NEW
+        //4. return response
+        return response.getBody();
     }
 
     /**
@@ -146,6 +178,79 @@ public class BankClient {
                     .message(bankHandle + " unreachable. Transaction pending.")
                     .build();
         }
+    }
+
+
+    /** get user's account **/
+    public Response getAccount(BankClientReq req) {
+
+        //1. bank's url
+        String baseUrl = resolveBankUrl(req.getBankHandle().toUpperCase());
+
+        //2. endpoint
+        String url = baseUrl + "/api/bank/account-exits";
+
+        //3. prepare body
+        PhoneReq phoneReq = new PhoneReq(req.getPhoneNumber());
+
+        //4. call helper
+        return callApi(url, phoneReq);
+    }
+
+    /**
+     * generate vpa and vpa registry
+     *
+     */
+    @Transactional
+    public Response generateVPA(BankClientReq req){
+        log.info("Generating VPA for phoneNumber={}, bank={}", req.getPhoneNumber(), req.getBankHandle());
+
+        if(req.getBankHandle() == null){
+            return new Response("Bank handle is required", 400, null, null);
+        }
+
+        //1. get bank url
+        String baseUrl = resolveBankUrl(req.getBankHandle().toUpperCase());
+
+        //2. endpoint
+        String url = baseUrl + "/api/bank/generate-vpa";
+
+        //3. prepare body
+        PhoneReq phoneReq = new PhoneReq(req.getPhoneNumber());
+
+        //4.call helper
+        Response res =  callApi(url, phoneReq);
+
+        //5. check status
+        if(res.getStatusCode() == 200) {
+
+            //6. get data
+            String vpa = res.getData().get("vpa").toString();
+            String accountNumber = res.getData().get("accountNumber").toString();
+
+            //7. hashed account no
+            String hashedAccountNumber = CryptoUtil.hashMpin(accountNumber);
+
+            //8. save vpa
+            VPARegistry registry = new VPARegistry();
+            registry.setVpa(vpa);
+            registry.setLinkedBankHandle(req.getBankHandle().toUpperCase());
+            registry.setAccountRef(hashedAccountNumber);
+            vpaRegistryRepository.save(registry);
+
+            //9. return res
+            Map<String, Object> map = new HashMap<>();
+            map.put("vpa", vpa);
+            map.put("accountNumber", MaskingUtil.maskAccountNumber(accountNumber));
+            map.put("phoneNumber", req.getPhoneNumber());
+            return new Response(
+                    "Vpa generated successfully",
+                    200,
+                    null,
+                    map
+            );
+        }
+        return res;
     }
 
     /**

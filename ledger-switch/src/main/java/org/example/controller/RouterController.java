@@ -1,8 +1,12 @@
 package org.example.controller;
 
+import org.example.client.BankClient;
+import org.example.dto.BankClientReq;
 import org.example.dto.PaymentRequest;
+import org.example.dto.Response;
 import org.example.dto.TransactionResponse;
 import org.example.enums.TransactionStatus;
+import org.example.service.AccountLinkService;
 import org.example.service.RouterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +26,11 @@ public class RouterController {
     private static final Logger log = LoggerFactory.getLogger(RouterController.class);
 
     private final RouterService routerService;
+    private final AccountLinkService accountLinkService;
 
-    public RouterController(RouterService routerService) {
+    public RouterController(RouterService routerService, AccountLinkService accountLinkService) {
         this.routerService = routerService;
+        this.accountLinkService = accountLinkService;
     }
 
     /**
@@ -97,6 +103,32 @@ public class RouterController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(bankHandle);
+    }
+
+
+    /**
+     * get available bank list
+     *
+     */
+    @GetMapping("/banks")
+    public Response getBanks() {
+        return accountLinkService.getAllBanks();
+    }
+
+    /**
+     * get exits bank
+     */
+    @PostMapping("/account-exits")
+    public Response getExitsBank(@RequestBody BankClientReq req){
+        return accountLinkService.getAccount(req);
+    }
+
+    /**
+     * generate vpa
+     */
+    @PostMapping("/vpa-generate")
+    public Response generateVpaBank(@RequestBody BankClientReq req){
+        return accountLinkService.generateVPA(req);
     }
 
     /**

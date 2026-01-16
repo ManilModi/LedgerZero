@@ -142,7 +142,7 @@ public class PaymentInitiationService {
                 .payeeVpa(payeeVpa)
                 .amount(amount)
                 .mpinHash(mpinHash)
-                .fraudCheckData(fraudData)
+//                .fraudCheckData(fraudData)
                 .build();
 
         // Step 9: Call Switch service

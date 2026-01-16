@@ -1,8 +1,7 @@
 package org.example.controller;
 
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.dto.auth.*;
-import org.example.dto.common.Response;
+import org.example.dto.*;
 import org.example.service.IAuth;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +19,7 @@ public class AuthController {
     }
 
     @PostMapping("/send-otp")
-    public Response sendOtp(@RequestBody PhoneVerificationReq req) {
+    public Response sendOtp(@RequestBody PhoneOtpVerificationReq req) {
         return authService.sendOtpToPhone(req);
     }
 

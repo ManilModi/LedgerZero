@@ -6,10 +6,6 @@ import ai.onnxruntime.OrtSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.PaymentRequest;
-<<<<<<< HEAD
-//import org.example.dto.PaymentRequest.FraudCheckData; // Assuming inner class or check where it is
-=======
->>>>>>> 04683a7a51673a880f53fb73b45deef81e40a9ae
 import org.example.model.SuspiciousEntity;
 import org.example.repository.SuspiciousEntityRepository;
 import org.neo4j.driver.Driver;
@@ -67,12 +63,12 @@ public class FraudDetectionService {
     public void init() {
         try {
             // 1. Initialize Redis Pool
-            this.redisPool = new JedisPool("localhost", 6379);
+            this.redisPool = new JedisPool("localhost", 6380);
 
             // 2. Initialize AI Brain (ONNX)
             this.env = OrtEnvironment.getEnvironment();
             // Ensure path is correct relative to where you run the jar/IDE
-            this.session = env.createSession("../Money Laundering Model/fraud_model_v2.onnx", new OrtSession.SessionOptions());
+            this.session = env.createSession("../moneyLaundering/fraud_model_v2.onnx", new OrtSession.SessionOptions());
             log.info("🚀 AI Brain & Redis Loaded Successfully");
         } catch (Exception e) {
             log.error("❌ Critical: Failed to initialize AI Engine", e);

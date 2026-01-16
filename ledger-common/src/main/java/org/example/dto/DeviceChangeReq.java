@@ -1,4 +1,4 @@
-package org.example.dto.auth;
+package org.example.dto;
 
 import lombok.*;
 
@@ -7,10 +7,9 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateUserReq {
+public class DeviceChangeReq {
     private String phoneNumber;
-    private String fullName;
-    private String password;
+    private String otp;
     private String deviceId;
     private String lastLoginIp;
     private String modelName;
