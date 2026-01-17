@@ -1,0 +1,50 @@
+package org.example.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import org.example.dto.*;
+import org.example.service.imp.AccountLinkService;
+import org.springframework.web.bind.annotation.*;
+
+
+@RestController
+@RequestMapping("/api/account")
+public class AccountLinkController {
+
+    private final AccountLinkService accountLinkService;
+
+    public AccountLinkController(AccountLinkService accountLinkService) {
+        this.accountLinkService = accountLinkService;
+    }
+
+    /**
+     * get banks
+     *
+     */
+    @GetMapping("/banks")
+    public Response getAllBanks(){
+        return accountLinkService.getAllBanks();
+    }
+
+    /**
+     *  send otp to phone number which is linked with phone  number
+     *
+     */
+    @PostMapping("/bank/otp")
+    public Response sendOtp(HttpServletRequest request, @RequestBody BankHandlerReq req){
+        return accountLinkService.sendOtpToPhoneNumber(request, req);
+    }
+
+
+    /**
+     * otp check and vpa generating
+     * @param req
+     * @return Response
+     */
+    @PostMapping("/bank/vpa-generate")
+    public Response generateVPA(HttpServletRequest request, @RequestBody BankHandlerVerificationReq req){
+        return accountLinkService.checkOtpAndGenerateVPA(request, req);
+    }
+
+
+
+}

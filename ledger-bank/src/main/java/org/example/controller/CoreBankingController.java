@@ -1,8 +1,11 @@
 package org.example.controller;
 
 import org.example.dto.PaymentRequest;
+import org.example.dto.PhoneReq;
+import org.example.dto.Response;
 import org.example.dto.TransactionResponse;
 import org.example.enums.TransactionStatus;
+import org.example.service.AccountLinkService;
 import org.example.service.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +30,11 @@ public class CoreBankingController {
     private static final Logger log = LoggerFactory.getLogger(CoreBankingController.class);
 
     private final TransactionService transactionService;
+    private final AccountLinkService accountLinkService;
 
-    public CoreBankingController(TransactionService transactionService) {
+    public CoreBankingController(TransactionService transactionService, AccountLinkService accountLinkService) {
         this.transactionService = transactionService;
+        this.accountLinkService = accountLinkService;
     }
 
     /**
@@ -151,6 +156,21 @@ public class CoreBankingController {
         } else {
             return ResponseEntity.unprocessableEntity().body(response);
         }
+    }
+
+    /** get account**/
+    @PostMapping("/account-exits")
+    public Response getAccountViaPhone(@RequestBody PhoneReq req){
+        return accountLinkService.checkAccountExitsViaPhoneNumber(req);
+    }
+
+    /**
+     * generate VPA
+     * return mask account and generated vpa
+     */
+    @PostMapping("/generate-vpa")
+    public Response generateVPA(@RequestBody PhoneReq req){
+        return accountLinkService.generateVPA(req);
     }
 
     /**

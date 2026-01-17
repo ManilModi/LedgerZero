@@ -49,7 +49,7 @@ public interface DeviceRepository extends JpaRepository<UserDevice, String> {
      */
     @Modifying
     @Transactional
-    @Query("UPDATE UserDevice d SET d.isTrusted = false WHERE d.user.phoneNumber = :phoneNumber")
+    @Query("UPDATE UserDevice set isTrusted=false where user.phoneNumber= :phoneNumber")
     void updateDeviceByUserPhoneNumber(@Param("phoneNumber") String phoneNumber);
 
     /**
@@ -60,4 +60,5 @@ public interface DeviceRepository extends JpaRepository<UserDevice, String> {
     @Transactional
     @Query("UPDATE UserDevice d SET d.isTrusted = false WHERE d.user.userId IN :userIds")
     void blockDevicesForUsers(@Param("userIds") List<String> userIds);
+
 }

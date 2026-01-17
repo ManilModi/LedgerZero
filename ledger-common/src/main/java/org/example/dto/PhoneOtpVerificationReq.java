@@ -1,4 +1,4 @@
-package org.example.dto.auth;
+package org.example.dto;
 
 import lombok.*;
 
@@ -7,7 +7,6 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class PhoneOtpVerificationReq {
+public class PhoneOtpVerificationReq extends PhoneReq {
     private String otp;
-    private String phoneNumber;
 }

@@ -24,6 +24,9 @@ public class BankAccount {
     @Column(name = "account_number")
     private String accountNumber;
 
+    @Column(name = "phono_number")
+    private String phonoNumber;
+
     @Column(name = "user_name")
     private String userName;
 
@@ -33,9 +36,9 @@ public class BankAccount {
     @Column(name = "avg_monthly_balance")
     private BigDecimal avgMonthlyBalance; // Baseline for ML
 
-    @Builder.Default
+//    @Builder.Default
     @Column(name = "frozen_status")
-    private boolean frozenStatus = false; // True if ML detects Money Laundering
+    private Boolean frozenStatus = false; // True if ML detects Money Laundering
 
     @Column(name = "mpin_hash")
     private String mpinHash;

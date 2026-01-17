@@ -1,11 +1,10 @@
 package org.example.service;
 
 import jakarta.servlet.http.HttpServletResponse;
-import org.example.dto.auth.*;
-import org.example.dto.common.Response;
+import org.example.dto.*;
 
 public interface IAuth {
-    Response sendOtpToPhone(PhoneVerificationReq req);
+    Response sendOtpToPhone(PhoneReq req);
     Response checkOtpToPhone(PhoneOtpVerificationReq req);
 
     Response completeRegistration(HttpServletResponse response, CreateUserReq req);

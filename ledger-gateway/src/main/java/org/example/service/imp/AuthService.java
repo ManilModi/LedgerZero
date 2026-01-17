@@ -3,8 +3,7 @@ package org.example.service.imp;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import org.example.dataModel.UserDeviceData;
-import org.example.dto.auth.*;
-import org.example.dto.common.Response;
+import org.example.dto.*;
 import org.example.model.Enums;
 import org.example.model.TempUser;
 import org.example.model.User;
@@ -23,9 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
-import software.amazon.awssdk.services.sns.model.PublishResponse;
-
+import org.example.utils.SendOtpUtil;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -84,63 +81,24 @@ public class AuthService implements IAuth {
         return jwtToken;
     }
 
-    //utility
-    private Response sendOtp(String phoneNumber){
-        //1. otp gen
-        int otpValue = 100000 + secureRandom.nextInt(900000); // Always 6 digits
-        String otp = String.valueOf(otpValue);
-
-        //3. store otp
-        TempUser tempUser = new TempUser();
-        tempUser.setPhoneNumber(phoneNumber);
-        tempUser.setOtp(otp);
-        tempUserRepo.save(tempUser);
-        log.info("OTP stored temporarily for phoneNumber={}", phoneNumber);
-
-        try {
-            // 5. Call AWS SNS
-            PublishResponse result = snsClient.publish(
-                    PublishRequest.builder()
-                            .message("Your LedgerZero Verification OTP is: " + otp)
-                            .phoneNumber(phoneNumber)
-                            .build()
-            );
-
-            log.info("OTP sent successfully. phoneNumber={}, messageId={}",
-                    phoneNumber, result.messageId());
-
-            return new Response("OTP sent to " + phoneNumber, 200, null, null);
-        } catch (Exception e) {
-            log.error("Error while sending OTP. phoneNumber={}", phoneNumber, e);
-            return new Response("Error found", 500, e.toString(), null);
-        }
-    }
 
     //send otp for new device
-    private Response sendOtpForNewDevice(PhoneVerificationReq req) {
+    private Response sendOtpForNewDevice(PhoneReq req) {
 
         //1. get phono no
         String phoneNumber = req.getPhoneNumber();
         log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
-        return sendOtp(phoneNumber);
+        return SendOtpUtil.sendOtp(phoneNumber, secureRandom, tempUserRepo, snsClient);
     }
 
 
-    public Response sendOtpToPhone(PhoneVerificationReq req) {
+    public Response sendOtpToPhone(PhoneReq req) {
 
         //1. get phono no
         String phoneNumber = req.getPhoneNumber();
         log.info("sendOtpToPhone started for phoneNumber={}", phoneNumber);
 
-        //check phone-no is present or not into db
-        User exitUser = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
-
-        if(exitUser != null){
-            log.warn("OTP request failed, phone already registered. phoneNumber={}", phoneNumber);
-            return new Response("Phone number already registered", 400, null, null);
-        }
-
-        return sendOtp(phoneNumber);
+        return SendOtpUtil.sendOtp(phoneNumber, secureRandom, tempUserRepo, snsClient);
     }
 
     public Response checkOtpToPhone(PhoneOtpVerificationReq req) {
@@ -285,7 +243,7 @@ public class AuthService implements IAuth {
             log.info("New device detected, sending OTP. phoneNumber={}", phoneNumber);
 
             //6. send otp and verify device
-            PhoneVerificationReq phoneVerificationReq = new PhoneVerificationReq();
+            PhoneReq phoneVerificationReq = new PhoneReq();
             phoneVerificationReq.setPhoneNumber(phoneNumber);
             Response res = sendOtpForNewDevice(phoneVerificationReq);
             return new Response(res.getMessage(),res.getStatusCode(),res.getError(), res.getData());
