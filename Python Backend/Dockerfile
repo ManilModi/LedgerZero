@@ -1,21 +1,18 @@
-# Use Python 3.9 Slim
-FROM python:3.9-slim
+# ✅ UPGRADE: Use Python 3.11 (Required for newer libraries)
+FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-# Install System Dependencies for Postgres (psycopg2)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python Libraries
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy App Code
 COPY app.py .
 
-# Run FastAPI
-# 0.0.0.0 allows access from outside container
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# ✅ FIX: Run via "python -m" to avoid PATH issues
+CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

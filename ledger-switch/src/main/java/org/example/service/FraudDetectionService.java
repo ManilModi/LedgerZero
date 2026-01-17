@@ -6,10 +6,9 @@ import ai.onnxruntime.OrtSession;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dto.PaymentRequest;
-<<<<<<< HEAD
+
 //import org.example.dto.PaymentRequest.FraudCheckData; // Assuming inner class or check where it is
-=======
->>>>>>> 04683a7a51673a880f53fb73b45deef81e40a9ae
+
 import org.example.model.SuspiciousEntity;
 import org.example.repository.SuspiciousEntityRepository;
 import org.neo4j.driver.Driver;
@@ -29,6 +28,7 @@ import java.nio.LongBuffer;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.LongStream;
+import java.io.InputStream;
 
 /**
  * Hybrid Fraud Detection Engine
@@ -63,23 +63,32 @@ public class FraudDetectionService {
     private static final double AI_FRAUD_THRESHOLD = 0.85;
     private static final double HIGH_VALUE_AMOUNT = 100000.0;
 
+    // Add this import
+
     @PostConstruct
     public void init() {
         try {
             // 1. Initialize Redis Pool
             this.redisPool = new JedisPool("localhost", 6379);
 
-            // 2. Initialize AI Brain (ONNX)
+            // 2. Initialize AI Brain (ONNX) - Load from Resources (Classpath)
             this.env = OrtEnvironment.getEnvironment();
-            // Ensure path is correct relative to where you run the jar/IDE
-            this.session = env.createSession("../Money Laundering Model/fraud_model_v2.onnx", new OrtSession.SessionOptions());
+
+            // ✅ LOAD AS STREAM (Works in IDE & Docker)
+            try (InputStream modelStream = getClass().getResourceAsStream("/fraud_model_v2.onnx")) {
+                if (modelStream == null) {
+                    throw new RuntimeException("❌ Model file not found in src/main/resources/fraud_model_v2.onnx");
+                }
+                byte[] modelBytes = modelStream.readAllBytes();
+                this.session = env.createSession(modelBytes, new OrtSession.SessionOptions());
+            }
+
             log.info("🚀 AI Brain & Redis Loaded Successfully");
         } catch (Exception e) {
             log.error("❌ Critical: Failed to initialize AI Engine", e);
             throw new RuntimeException(e);
         }
     }
-
     @PreDestroy
     public void cleanup() {
         try {

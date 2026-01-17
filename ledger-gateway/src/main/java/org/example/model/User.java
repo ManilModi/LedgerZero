@@ -1,5 +1,6 @@
 package org.example.model;
 
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,7 +26,8 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(name = "vpa", unique = true)
+    @Column(name = "vpa", unique = true, nullable = true)
+    @Nullable
     private String vpa;  // Virtual Payment Address (e.g., "alice@l0")
 
     @Column(name = "kyc_status")

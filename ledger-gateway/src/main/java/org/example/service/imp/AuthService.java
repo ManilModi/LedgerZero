@@ -21,12 +21,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class AuthService implements IAuth {
@@ -44,6 +46,9 @@ public class AuthService implements IAuth {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    // ✅ RestTemplate initialized
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${jwt.secret-key}")
     private String jwtKey;
@@ -154,7 +159,7 @@ public class AuthService implements IAuth {
 
             User user = new User();
             user.setPhoneNumber(phoneNumber);
-            user.setKycStatus(Enums.KycStatus.PENDING);
+            user.setKycStatus(Enums.KycStatus.APPROVED);
             userRepo.save(user);
 
             tempUserRepo.delete(tempUser);
@@ -221,6 +226,20 @@ public class AuthService implements IAuth {
         CookieUtil.createJwtCookie(response, jwtToken, exTime);
         log.info("JWT generated and cookie set for userId={}", user.getUserId());
 
+        // ✅ 8. TRIGGER GRAPH SYNC (ASYNC)
+        CompletableFuture.runAsync(() -> {
+            try {
+                // If running Java in IDE + Python in Docker, use "http://localhost:8000"
+                String url = "http://localhost:8000/sync/users";
+                restTemplate.postForLocation(url, null);
+
+                // Use 'user.getPhoneNumber()' NOT 'savedUser'
+                log.info("🚀 Triggered Graph Sync for new user: {}", user.getPhoneNumber());
+            } catch (Exception e) {
+                log.warn("⚠️ Failed to trigger Graph Sync: {}", e.getMessage());
+            }
+        });
+
         return new Response(
                 "User auto-login successful",
                 200,
@@ -275,8 +294,8 @@ public class AuthService implements IAuth {
             //7. jwt and cookie
             String jwtToken = jwtAndCookie(response, user);
             return new Response("Login successful", 200, null,
-                        Collections.singletonMap("jwt", jwtToken)
-                    );
+                    Collections.singletonMap("jwt", jwtToken)
+            );
         }
 
 
@@ -307,7 +326,7 @@ public class AuthService implements IAuth {
 
             tempUserRepo.delete(tempUser);
 
-           //4. get main user
+            //4. get main user
             User user = userRepo.findByPhoneNumber(phoneNumber).orElse(null);
 
             if(user == null){

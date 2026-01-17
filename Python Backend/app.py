@@ -19,8 +19,8 @@ RDS_PORT = int(os.getenv("RDS_PORT", 5432))
 RDS_USER = os.getenv("RDS_USER", "postgres")
 RDS_PASSWORD = os.getenv("RDS_PASSWORD", "password")
 
-NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_AUTH = ("neo4j", os.getenv("NEO4J_PASSWORD", "password"))
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://127.0.0.1:7687")
+NEO4J_AUTH = ("neo4j", os.getenv("password", "password"))
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
@@ -85,24 +85,42 @@ class GraphSyncService:
     def sync_users(self):
         try:
             self.ensure_conn()
+            # Fetch users
             query = f"SELECT user_id, phone_number, kyc_status, risk_score, created_at FROM users WHERE created_at > '{self.state['last_user_time']}' ORDER BY created_at ASC LIMIT 1000"
             
             df = pd.read_sql(query, self.gateway_conn)
             if df.empty: return
 
             logger.info(f"🔄 Syncing {len(df)} New Users...")
+            
             with self.driver.session() as session:
                 for _, row in df.iterrows():
+                    # ✅ 1. Safe Type Conversion
+                    uid_str = str(row['user_id'])
+                    
+                    # Force Phone to String (Fixes the Pandas Integer issue)
+                    phone_str = str(row['phone_number']) 
+                    
+                    # Force Risk Score to Float (Fixes Decimal serialization issue)
+                    risk_val = float(row['risk_score']) if row['risk_score'] is not None else 0.0
+                    
+                    kyc_str = str(row['kyc_status'])
+
                     session.run("""
-                        MERGE (u:User {userId: toString($uid)})
-                        SET u.phone = $phone, u.kyc = $kyc, u.riskScore = toFloat($risk), u.vpa = $phone + '@upibank'
-                    """, uid=row['user_id'], phone=row['phone_number'], kyc=row['kyc_status'], risk=row['risk_score'])
+                        MERGE (u:User {userId: $uid})
+                        SET u.phone = $phone, 
+                            u.kyc = $kyc, 
+                            u.riskScore = $risk, 
+                            u.vpa = $phone + '@upibank'
+                    """, uid=uid_str, phone=phone_str, kyc=kyc_str, risk=risk_val)
             
+            # Update state
             self.save_state('last_user_time', df.iloc[-1]['created_at'])
+            logger.info(f"✅ Users synced up to {df.iloc[-1]['created_at']}")
 
         except Exception as e:
             logger.error(f"❌ User Sync Error: {e}")
-            self.gateway_conn = None 
+            self.gateway_conn = None
 
     def sync_transactions(self):
         try:
