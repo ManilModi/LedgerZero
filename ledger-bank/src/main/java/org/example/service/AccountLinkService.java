@@ -38,11 +38,7 @@ public class AccountLinkService {
 
         // 1. get account
         BankAccount account = accountRepository
-<<<<<<< Updated upstream
                 .findByPhoneNumber(phoneNumber)
-=======
-                .findByPhoneNumber(req.getPhoneNumber())
->>>>>>> Stashed changes
                 .orElse(null);
 
 
@@ -103,11 +99,7 @@ public class AccountLinkService {
 
         // 1. get account
         BankAccount account = accountRepository
-<<<<<<< Updated upstream
                 .findByPhoneNumber(phoneNumber)
-=======
-                .findByPhoneNumber(req.getPhoneNumber())
->>>>>>> Stashed changes
                 .orElse(null);
 
         // 2. check exists or not
@@ -123,12 +115,7 @@ public class AccountLinkService {
         }
 
         // 3. generate vpa
-<<<<<<< Updated upstream
         String vpa = GenerateVPAUtil.generateVpa(phoneNumber, bankName);
-=======
-        String vpa = GenerateVPAUtil.generateVpa(account.getPhoneNumber(), bankName);
->>>>>>> Stashed changes
-
         log.info("VPA generated successfully for accountNumber={}, vpa={}",
                 account.getAccountNumber(), vpa);
 
