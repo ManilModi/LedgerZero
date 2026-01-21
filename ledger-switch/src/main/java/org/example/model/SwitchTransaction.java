@@ -9,7 +9,20 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transactions", indexes = {
+        // 🚀 Critical for Sync Engine: "SELECT * FROM txns WHERE created_at > last_sync_time"
+        @Index(name = "idx_txn_created", columnList = "created_at"),
+
+        // 🚀 Critical for Fraud Engine (Fan-In Check): "Count txns to Payee X in last 10 mins"
+        // Using a composite index (payee + time) makes this query instant.
+        @Index(name = "idx_txn_payee_time", columnList = "payee_vpa, created_at"),
+
+        // 🚀 Critical for Fraud Engine (Velocity Check): "Count txns by Payer Y in last 10 mins"
+        @Index(name = "idx_txn_payer_time", columnList = "payer_vpa, created_at"),
+
+        // Useful for Analytics/Reports filtering (e.g., "Show me all FAILED txns")
+        @Index(name = "idx_txn_status", columnList = "status")
+})
 @Data
 @Builder
 @NoArgsConstructor

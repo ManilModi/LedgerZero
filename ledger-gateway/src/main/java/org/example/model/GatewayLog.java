@@ -8,7 +8,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "gateway_logs")
+@Table(name = "gateway_logs", indexes = {
+        @Index(name = "idx_gw_user", columnList = "user_id"),
+        @Index(name = "idx_gw_time", columnList = "timestamp")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

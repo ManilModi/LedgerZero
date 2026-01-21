@@ -7,7 +7,13 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_devices")
+@Table(name = "user_devices", indexes = {
+        // 🚀 Critical: Prevents table scans when fetching devices by User ID
+        @Index(name = "idx_device_user", columnList = "user_id"),
+
+        // 🚀 Critical: Optimizes Fraud Engine queries filtering for trusted/untrusted devices
+        @Index(name = "idx_device_trusted", columnList = "is_trusted")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

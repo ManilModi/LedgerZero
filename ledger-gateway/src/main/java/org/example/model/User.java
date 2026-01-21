@@ -9,7 +9,15 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+        // 🚀 Critical for Python Sync Engine (Incremental Fetch)
+        @Index(name = "idx_users_created", columnList = "created_at"),
+
+        // 🚀 Critical for Login & SMS lookups
+        @Index(name = "idx_users_phone", columnList = "phone_number"),
+
+        // 🚀 Critical for Transaction Routing (Payer/Payee Lookup)
+        @Index(name = "idx_users_vpa", columnList = "vpa")})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
