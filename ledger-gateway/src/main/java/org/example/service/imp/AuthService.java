@@ -1,7 +1,7 @@
 package org.example.service.imp;
 
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.example.dto.UserDeviceData;
 import org.example.dto.*;
 import org.example.model.Enums;
@@ -109,6 +109,7 @@ public class AuthService implements IAuth {
         return SendOtpUtil.sendOtp(phoneNumber, secureRandom, tempUserRepo, snsClient);
     }
 
+    @Transactional
     public Response sendOtpToPhone(PhoneReq req) {
 
         //1. get phono no
@@ -118,6 +119,7 @@ public class AuthService implements IAuth {
         return SendOtpUtil.sendOtp(phoneNumber, secureRandom, tempUserRepo, snsClient);
     }
 
+    @Transactional
     public Response checkOtpToPhone(PhoneOtpVerificationReq req) {
 
         //1. get user's entered data
@@ -147,6 +149,7 @@ public class AuthService implements IAuth {
         return new Response("OTP verification failed", 400, null, null);
     }
 
+    @Transactional
     public Response completeRegistration(HttpServletResponse response, CreateUserReq req) {
         //1. get user's data
         String phoneNumber = req.getPhoneNumber();
@@ -223,7 +226,7 @@ public class AuthService implements IAuth {
 
     }
 
-    //login
+    @Transactional
     public Response login(HttpServletResponse response, LoginReq req) {
         //1. get data
         String phoneNumber = req.getPhoneNumber();
