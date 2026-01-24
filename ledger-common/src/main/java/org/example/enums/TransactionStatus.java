@@ -12,6 +12,11 @@ public enum TransactionStatus {
     PENDING,
 
     /**
+     * Transaction requested by Payee, waiting for Payer approval (MPIN).
+     */
+    REQUESTED,
+
+    /**
      * Transaction completed successfully.
      * Money debited from sender and credited to receiver.
      */

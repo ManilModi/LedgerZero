@@ -52,5 +52,5 @@ public interface AccountRepository extends JpaRepository<BankAccount, String> {
 
 
     Optional<BankAccount> findByPhoneNumber(String phoneNumber);
-
+    
 }

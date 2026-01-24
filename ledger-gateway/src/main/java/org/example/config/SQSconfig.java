@@ -1,6 +1,5 @@
 package org.example.config;
 
-import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +20,7 @@ public class SQSconfig {
     @Bean
     public SqsClient sqsClient() {
         return SqsClient.builder()
-                .region(Region.AP_SOUTH_1)
+                .region(Region.US_EAST_1)
                 .credentialsProvider(
                         StaticCredentialsProvider.create(
                                 AwsBasicCredentials.create(accessKey, secretKey)

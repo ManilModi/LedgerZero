@@ -39,7 +39,6 @@ public class AccountLinkService {
         // 1. get account
         BankAccount account = accountRepository
                 .findByPhoneNumber(phoneNumber)
-
                 .orElse(null);
 
 
@@ -101,8 +100,6 @@ public class AccountLinkService {
         // 1. get account
         BankAccount account = accountRepository
                 .findByPhoneNumber(phoneNumber)
-
-
                 .orElse(null);
 
         // 2. check exists or not
@@ -119,8 +116,6 @@ public class AccountLinkService {
 
         // 3. generate vpa
         String vpa = GenerateVPAUtil.generateVpa(phoneNumber, bankName);
-
-
         log.info("VPA generated successfully for accountNumber={}, vpa={}",
                 account.getAccountNumber(), vpa);
 

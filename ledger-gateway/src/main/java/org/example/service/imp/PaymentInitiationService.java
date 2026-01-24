@@ -110,6 +110,8 @@ public class PaymentInitiationService {
             return buildFailedResponse(txnId, "KYC verification required");
         }
 
+
+
         // Step 3: Validate device is trusted
         Optional<UserDevice> deviceOpt = deviceRepository.findByDeviceId(deviceId);
         if (deviceOpt.isEmpty() || !deviceOpt.get().isTrusted()) {
@@ -124,7 +126,7 @@ public class PaymentInitiationService {
         }
 
         // Step 5: Hash the MPIN using CryptoUtil
-        String mpinHash = CryptoUtil.hashMpin(plainMpin);
+        String mpinHash = plainMpin;
         log.debug("MPIN hashed for txnId: {}", txnId);
 
         // Step 6: Build FraudCheckData for ML

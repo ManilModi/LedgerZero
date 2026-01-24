@@ -1,6 +1,7 @@
 package org.example.service.imp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.example.dto.SmsNotificationTask;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,6 +14,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class SqsConsumerService {
 
@@ -35,8 +37,10 @@ public class SqsConsumerService {
         ReceiveMessageRequest receiveRequest = ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl)
                 .maxNumberOfMessages(5) // Process 5 at a time
-                .waitTimeSeconds(10)    // Long polling
+                .waitTimeSeconds(20)    // Long polling
                 .build();
+
+        log.info("Checking queue for messages: {}", receiveRequest);
 
         List<Message> messages = sqsClient.receiveMessage(receiveRequest).messages();
 
@@ -52,14 +56,21 @@ public class SqsConsumerService {
                         task.getAmount(), task.getRemainingBalance()
                 );
 
+                log.info("SMS content: {}", smsContent);
+                log.info("PhoneNumber is: {}", task.getPhoneNumber());
+
                 // 3. Send via SNS
                 snsClient.publish(PublishRequest.builder()
                         .message(smsContent)
                         .phoneNumber(task.getPhoneNumber())
                         .build());
 
+                log.info("SMS sent successfully: {}", smsContent);
+
                 // 4. DELETE from queue so it's not processed again
                 sqsClient.deleteMessage(builder -> builder.queueUrl(queueUrl).receiptHandle(message.receiptHandle()));
+
+                log.info("Message deleted successfully: {}", message.receiptHandle());
 
             } catch (Exception e) {
                 e.printStackTrace();

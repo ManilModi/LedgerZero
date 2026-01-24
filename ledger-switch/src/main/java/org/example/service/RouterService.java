@@ -130,6 +130,8 @@ public class RouterService {
                 .status(TransactionStatus.SUCCESS)
                 .message("Payment Successful")
                 .riskScore(riskScore)
+                .debitSmsNotificationTask(debitResponse.getDebitSmsNotificationTask())
+                .creditSmsNotificationTask(creditResponse.getCreditSmsNotificationTask())
                 .build();
     }
 

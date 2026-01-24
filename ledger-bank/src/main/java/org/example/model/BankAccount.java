@@ -13,7 +13,11 @@ import java.math.BigDecimal;
  * Uses @Version for optimistic locking to prevent concurrent balance updates.
  */
 @Entity
-@Table(name = "accounts")
+@Table(name = "accounts", indexes = {
+        // 🚀 Critical: Fast lookup for "Link Bank Account" API (Phone -> Account)
+        // Write Impact: Low (Phone numbers rarely change)
+        @Index(name = "idx_acc_phone", columnList = "phone_number")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -36,7 +40,6 @@ public class BankAccount {
 
 //    @Builder.Default
     @Column(name = "frozen_status")
-    @Builder.Default  // ✅ Important for Lombok Builder
     private Boolean frozenStatus = false; // True if ML detects Money Laundering
 
     @Column(name = "mpin_hash")
