@@ -1,0 +1,10 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.env
+*.onnx
+!rl_fraud_policy_v2_packed.onnx  # Keep the packed model, ignore others if you want
+docker-compose.yml
+README.md
