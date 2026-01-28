@@ -258,13 +258,25 @@ public class AuthService implements IAuth {
 
         if (device.isEmpty()) {
 
-            log.info("New device detected, sending OTP. phoneNumber={}", phoneNumber);
+//            log.info("New device detected, sending OTP. phoneNumber={}", phoneNumber);
+//
+//            //6. send otp and verify device
+//            PhoneReq phoneVerificationReq = new PhoneReq();
+//            phoneVerificationReq.setPhoneNumber(phoneNumber);
+//            Response res = sendOtpForNewDevice(phoneVerificationReq);
+//            return new Response(res.getMessage(), res.getStatusCode(), res.getError(), res.getData());
 
-            //6. send otp and verify device
-            PhoneReq phoneVerificationReq = new PhoneReq();
-            phoneVerificationReq.setPhoneNumber(phoneNumber);
-            Response res = sendOtpForNewDevice(phoneVerificationReq);
-            return new Response(res.getMessage(), res.getStatusCode(), res.getError(), res.getData());
+            log.info("Trusted device login success. userId={}", user.getUserId());
+            //7. jwt and cookie
+            String jwtToken = jwtAndCookie(response, user);
+
+            // Build user data for frontend
+            List<UserDevice> devices = deviceRepository.findByUser(user);
+            List<UserDeviceData> deviceDataList = devices.stream().map(this::userDeviceToUserDeviceData).toList();
+
+            return new Response("Login successful", 200, null,
+                    buildUserResponseData(user, deviceDataList, jwtToken)
+            );
         } else if (device.get().isTrusted()) {
             log.info("Trusted device login success. userId={}", user.getUserId());
             //7. jwt and cookie
