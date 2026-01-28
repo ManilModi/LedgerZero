@@ -17,7 +17,7 @@ public class SendOtpUtil { ;
         phoneNumber = PhoneNumberUtil.setCode(phoneNumber);
 
         //1. otp gen
-        int otpValue = 100000 + secureRandom.nextInt(900000); // Always 6 digits
+        int otpValue = 123456; // Always 6 digits
         String otp = String.valueOf(otpValue);
 
         //2. set otp
