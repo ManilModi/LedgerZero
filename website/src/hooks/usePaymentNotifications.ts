@@ -57,7 +57,7 @@ export function usePaymentNotifications() {
         case 'PAYMENT_RECEIVED':
           toast.success(
             `Received ₹${event.amount?.toLocaleString('en-IN')} from ${event.senderVpa}`,
-            { duration: 5000, icon: '💰' }
+            { duration: 5000, icon: '' }
           );
           // Update balance only if we have a valid number
           if (typeof event.newBalance === 'number' && !isNaN(event.newBalance)) {
@@ -70,7 +70,7 @@ export function usePaymentNotifications() {
         case 'PAYMENT_SENT':
           toast.success(
             event.message,
-            { duration: 4000, icon: '📤' }
+            { duration: 4000, icon: '' }
           );
           if (typeof event.newBalance === 'number' && !isNaN(event.newBalance)) {
             setBalanceRef.current(event.newBalance);

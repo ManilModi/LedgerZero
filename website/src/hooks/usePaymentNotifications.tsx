@@ -25,7 +25,7 @@ export interface PaymentNotificationEvent {
   message: string;
 }
 
-// Custom notification component matching app UI
+// Custom notification component matching app UI with glassmorphism
 interface NotificationToastProps {
   t: { id: string; visible: boolean };
   type: 'received' | 'sent' | 'failed' | 'reversed';
@@ -38,83 +38,150 @@ const NotificationToast = ({ t, type, amount, from, message }: NotificationToast
   const config = {
     received: {
       icon: ArrowDownLeft,
-      iconBg: 'bg-emerald-500/20',
+      iconBg: 'bg-emerald-500/30',
       iconColor: 'text-emerald-400',
+      glowColor: 'shadow-emerald-500/20',
+      borderColor: 'border-emerald-500/30',
+      accentGradient: 'from-emerald-500 to-emerald-600',
       title: 'Payment Received',
       amountColor: 'text-emerald-400',
       amountPrefix: '+',
     },
     sent: {
       icon: ArrowUpRight,
-      iconBg: 'bg-blue-500/20',
+      iconBg: 'bg-blue-500/30',
       iconColor: 'text-blue-400',
+      glowColor: 'shadow-blue-500/20',
+      borderColor: 'border-blue-500/30',
+      accentGradient: 'from-blue-500 to-blue-600',
       title: 'Payment Sent',
       amountColor: 'text-blue-400',
       amountPrefix: '-',
     },
     failed: {
       icon: AlertCircle,
-      iconBg: 'bg-red-500/20',
+      iconBg: 'bg-red-500/30',
       iconColor: 'text-red-400',
+      glowColor: 'shadow-red-500/20',
+      borderColor: 'border-red-500/30',
+      accentGradient: 'from-red-500 to-red-600',
       title: 'Payment Failed',
       amountColor: 'text-red-400',
       amountPrefix: '',
     },
     reversed: {
       icon: RotateCcw,
-      iconBg: 'bg-amber-500/20',
+      iconBg: 'bg-amber-500/30',
       iconColor: 'text-amber-400',
+      glowColor: 'shadow-amber-500/20',
+      borderColor: 'border-amber-500/30',
+      accentGradient: 'from-amber-500 to-amber-600',
       title: 'Payment Reversed',
       amountColor: 'text-amber-400',
       amountPrefix: '',
     },
   };
 
-  const { icon: Icon, iconBg, iconColor, title, amountColor, amountPrefix } = config[type];
+  const { icon: Icon, iconBg, iconColor, glowColor, borderColor, accentGradient, title, amountColor, amountPrefix } = config[type];
 
   return (
     <AnimatePresence>
       {t.visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          className="max-w-sm w-full bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl shadow-2xl overflow-hidden"
+          initial={{ opacity: 0, x: 100, scale: 0.9 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 100, scale: 0.9 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 400, 
+            damping: 25,
+            mass: 0.8
+          }}
+          className={`max-w-sm w-full overflow-hidden rounded-2xl shadow-2xl ${glowColor}`}
+          style={{
+            background: 'rgba(20, 20, 30, 0.85)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
         >
-          <div className="p-4">
+          {/* Gradient border effect */}
+          <div className={`absolute inset-0 rounded-2xl border ${borderColor} pointer-events-none`} />
+          
+          {/* Top accent gradient line */}
+          <div className={`h-1 bg-gradient-to-r ${accentGradient}`} />
+          
+          <div className="p-4 relative">
             <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
-                <Icon className={`w-6 h-6 ${iconColor}`} />
-              </div>
+              {/* Animated Icon with glow */}
+              <motion.div 
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 15, delay: 0.1 }}
+                className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center shrink-0 relative`}
+              >
+                {/* Icon glow effect */}
+                <div className={`absolute inset-0 rounded-xl ${iconBg} blur-lg opacity-50`} />
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Icon className={`w-6 h-6 ${iconColor} relative z-10`} />
+                </motion.div>
+              </motion.div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="flex-1 min-w-0"
+              >
+                <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">
                   {title}
                 </p>
                 {amount !== undefined && (
-                  <p className={`text-xl font-bold ${amountColor} mt-0.5`}>
+                  <motion.p 
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.2 }}
+                    className={`text-2xl font-bold ${amountColor} mt-0.5 tracking-tight`}
+                  >
                     {amountPrefix}₹{amount.toLocaleString('en-IN')}
-                  </p>
+                  </motion.p>
                 )}
-                <p className="text-sm text-[var(--text-secondary)] mt-1 truncate">
+                <p className="text-sm text-white/60 mt-1 truncate">
                   {from ? `from ${from}` : message}
                 </p>
-              </div>
+              </motion.div>
 
-              {/* Close button */}
-              <button
+              {/* Close button with hover effect */}
+              <motion.button
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => toast.dismiss(t.id)}
-                className="p-1.5 rounded-lg hover:bg-[var(--interactive-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                className="p-2 rounded-xl text-white/40 hover:text-white/80 transition-colors"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
+            
+            {/* Subtle shimmer effect */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: '200%' }}
+              transition={{ duration: 1.5, delay: 0.3, ease: "easeInOut" }}
+              className="absolute inset-0 w-1/3 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none"
+            />
           </div>
 
-          {/* Bottom accent line */}
-          <div className={`h-1 ${type === 'received' ? 'bg-emerald-500' : type === 'sent' ? 'bg-blue-500' : type === 'failed' ? 'bg-red-500' : 'bg-amber-500'}`} />
+          {/* Auto-dismiss progress bar */}
+          <motion.div
+            initial={{ scaleX: 1 }}
+            animate={{ scaleX: 0 }}
+            transition={{ duration: type === 'received' ? 5 : 4, ease: "linear" }}
+            style={{ transformOrigin: 'left' }}
+            className={`h-0.5 bg-gradient-to-r ${accentGradient} opacity-60`}
+          />
         </motion.div>
       )}
     </AnimatePresence>
