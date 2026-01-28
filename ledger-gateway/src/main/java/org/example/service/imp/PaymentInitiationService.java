@@ -1,10 +1,7 @@
 package org.example.service.imp;
 
 import org.example.client.SwitchClient;
-import org.example.dto.FraudCheckData;
-import org.example.dto.PaymentRequest;
-import org.example.dto.SmsNotificationTask;
-import org.example.dto.TransactionResponse;
+import org.example.dto.*;
 import org.example.enums.TransactionStatus;
 import org.example.model.Enums;
 import org.example.model.GatewayLog;
@@ -17,17 +14,24 @@ import org.example.utils.CryptoUtil;
 import org.example.utils.MaskingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Service for initiating payment transactions.
- * Validates sender, builds fraud data, logs request, and forwards to Switch.
+ * Service for initiating payment transactions. Validates sender, builds fraud
+ * data, logs request, and forwards to Switch.
  */
 @Service
 public class PaymentInitiationService {
@@ -37,64 +41,62 @@ public class PaymentInitiationService {
     // Rate limiting: Max transactions per device in 1 minute
     private static final int MAX_TXN_PER_MINUTE = 5;
 
+    @Value("${graphrag.service.url:http://localhost:8000}")
+    private String graphRagUrl;
+
+    private final RestTemplate restTemplate;
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
     private final GatewayLogRepository gatewayLogRepository;
     private final SwitchClient switchClient;
     private final SqsProducerService sqsProducerService;
-<<<<<<< HEAD
 
-=======
->>>>>>> 7731f5a0bc10846e8e198c41c5058cb6ab5bb238
+    // Optional - only available when kafka.enabled=true
+    private final PaymentNotificationProducer producer;
 
     public PaymentInitiationService(UserRepository userRepository,
-                                    DeviceRepository deviceRepository,
-                                    GatewayLogRepository gatewayLogRepository,
-                                    SwitchClient switchClient,
-                                    SqsProducerService sqsProducerService
-<<<<<<< HEAD
+            DeviceRepository deviceRepository,
+            GatewayLogRepository gatewayLogRepository,
+            SwitchClient switchClient,
+            SqsProducerService sqsProducerService,
+            @Autowired(required = false) PaymentNotificationProducer producer,
+            RestTemplate restTemplate
     ) {
-=======
-                                    ) {
->>>>>>> 7731f5a0bc10846e8e198c41c5058cb6ab5bb238
         this.userRepository = userRepository;
         this.deviceRepository = deviceRepository;
         this.gatewayLogRepository = gatewayLogRepository;
         this.switchClient = switchClient;
         this.sqsProducerService = sqsProducerService;
+        this.producer = producer;
+        this.restTemplate = restTemplate;
     }
 
     /**
-     * Initiates a payment from sender to receiver.
-     * This is the main entry point for payment processing in Gateway.
+     * Initiates a payment from sender to receiver. This is the main entry point
+     * for payment processing in Gateway.
      *
-     * Flow:
-     * 1. Validate sender VPA exists
-     * 2. Validate device is trusted
-     * 3. Rate limit check
-     * 4. Hash MPIN
-     * 5. Build FraudCheckData
-     * 6. Log to GatewayLog
-     * 7. Call Switch via SwitchClient
+     * Flow: 1. Validate sender VPA exists 2. Validate device is trusted 3. Rate
+     * limit check 4. Hash MPIN 5. Build FraudCheckData 6. Log to GatewayLog 7.
+     * Call Switch via SwitchClient
      *
-     * @param payerVpa    Sender's VPA (e.g., "alice@l0")
-     * @param payeeVpa    Receiver's VPA (e.g., "bob@l0")
-     * @param amount      Amount to transfer
-     * @param plainMpin   Raw MPIN entered by user
-     * @param deviceId    Device hardware ID
-     * @param ipAddress   Request IP address
-     * @param geoLat      Geographic latitude
-     * @param geoLong     Geographic longitude
-     * @param wifiSsid    WiFi network name (optional)
-     * @param userAgent   Client user agent
+     * @param payerVpa Sender's VPA (e.g., "alice@l0")
+     * @param payeeVpa Receiver's VPA (e.g., "bob@l0")
+     * @param amount Amount to transfer
+     * @param plainMpin Raw MPIN entered by user
+     * @param deviceId Device hardware ID
+     * @param ipAddress Request IP address
+     * @param geoLat Geographic latitude
+     * @param geoLong Geographic longitude
+     * @param wifiSsid WiFi network name (optional)
+     * @param userAgent Client user agent
      * @return TransactionResponse with status
      */
     @Transactional
     public TransactionResponse initiatePayment(String payerVpa, String payeeVpa,
-                                                BigDecimal amount, String plainMpin,
-                                                String deviceId, String ipAddress,
-                                                Double geoLat, Double geoLong,
-                                                String wifiSsid, String userAgent) {
+            BigDecimal amount, String plainMpin,
+            String deviceId, String ipAddress,
+            Double geoLat, Double geoLong,
+            String wifiSsid, String userAgent) {
 
         String txnId = generateTransactionId();
         log.info("Initiating payment: {} -> {} | Amount: {} | TxnId: {}",
@@ -109,7 +111,7 @@ public class PaymentInitiationService {
             return buildFailedResponse(txnId, "Sender VPA not registered");
         }
         User sender = senderOpt.get();
-        log.debug("DEBUG: Loaded user - userId: {}, vpa: {}, fullName: {}", 
+        log.debug("DEBUG: Loaded user - userId: {}, vpa: {}, fullName: {}",
                 sender.getUserId(), sender.getVpa(), sender.getFullName());
 
         // Step 2: Check KYC status
@@ -117,8 +119,6 @@ public class PaymentInitiationService {
             log.warn("Sender KYC not verified: {}", sender.getUserId());
             return buildFailedResponse(txnId, "KYC verification required");
         }
-
-
 
         // Step 3: Validate device is trusted
         Optional<UserDevice> deviceOpt = deviceRepository.findByDeviceId(deviceId);
@@ -158,7 +158,7 @@ public class PaymentInitiationService {
                 .payeeVpa(payeeVpa)
                 .amount(amount)
                 .mpinHash(mpinHash)
-//                .fraudCheckData(fraudData)
+                //                .fraudCheckData(fraudData)
                 .build();
 
         // Step 9: Call Switch service
@@ -173,41 +173,42 @@ public class PaymentInitiationService {
         sqsProducerService.queueSmsTask(creditSms);
         sqsProducerService.queueSmsTask(debitSms);
 
-<<<<<<< HEAD
-        // Step 11: Push WebSocket notification via Kafka
-        PaymentNotificationEvent receiverEvent = PaymentNotificationEvent.builder()
-                .eventType(PaymentNotificationEvent.EventType.PAYMENT_RECEIVED)
-                .transactionId(txnId)
-                .receiverVpa(request.getPayeeVpa())
-                .senderVpa(request.getPayerVpa())
-                .senderName("Sender Name") // optional
-                .amount(request.getAmount())
-                .timestamp(Instant.parse(Instant.now().toString()))
-                .message("Received ₹" + request.getAmount() + " from " + request.getPayerVpa())
-                .build();
+        // Step 11: Push WebSocket notification via Kafka (only if Kafka is enabled)
+        if (producer != null) {
+            PaymentNotificationEvent receiverEvent = PaymentNotificationEvent.builder()
+                    .eventType(PaymentNotificationEvent.EventType.PAYMENT_RECEIVED)
+                    .transactionId(txnId)
+                    .receiverVpa(request.getPayeeVpa())
+                    .senderVpa(request.getPayerVpa())
+                    .senderName("Sender Name") // optional
+                    .amount(request.getAmount())
+                    .timestamp(Instant.parse(Instant.now().toString()))
+                    .message("Received ₹" + request.getAmount() + " from " + request.getPayerVpa())
+                    .build();
 
+            producer.publish(receiverEvent);
 
-        PaymentNotificationEvent senderEvent = PaymentNotificationEvent.builder()
-                .eventType(PaymentNotificationEvent.EventType.PAYMENT_SENT)
-                .transactionId(txnId)
-                .receiverVpa(request.getPayerVpa()) // IMPORTANT: receiverVpa = target user for WS
-                .senderVpa(request.getPayerVpa())
-                .amount(request.getAmount())
-                .timestamp(Instant.parse(Instant.now().toString()))
-                .message("Payment of ₹" + request.getAmount() + " sent to " + request.getPayeeVpa())
-                .build();
+            PaymentNotificationEvent senderEvent = PaymentNotificationEvent.builder()
+                    .eventType(PaymentNotificationEvent.EventType.PAYMENT_SENT)
+                    .transactionId(txnId)
+                    .receiverVpa(request.getPayerVpa()) // IMPORTANT: receiverVpa = target user for WS
+                    .senderVpa(request.getPayerVpa())
+                    .amount(request.getAmount())
+                    .timestamp(Instant.parse(Instant.now().toString()))
+                    .message("Payment of ₹" + request.getAmount() + " sent to " + request.getPayeeVpa())
+                    .build();
 
+            producer.publish(senderEvent);
+        } else {
+            log.debug("Kafka disabled - skipping payment notifications");
+        }
 
-
-=======
->>>>>>> 7731f5a0bc10846e8e198c41c5058cb6ab5bb238
         log.info("Payment result for txnId {}: {}", txnId, response.getStatus());
         return response;
     }
 
     /**
-     * Generates a unique transaction ID.
-     * Format: TXN_<timestamp>_<uuid>
+     * Generates a unique transaction ID. Format: TXN_<timestamp>_<uuid>
      */
     private String generateTransactionId() {
         return "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
@@ -254,5 +255,49 @@ public class PaymentInitiationService {
                 .message(message)
                 .riskScore(0.0)
                 .build();
+    }
+
+    /**
+     * Calls Python GraphRAG Service to generate a Forensic Report.
+     *
+     * @param ragReq The GraphRAG request containing transaction details
+     * @return Response with forensic report data
+     */
+    public Response callGraphRAG(GraphRAGReq ragReq) {
+        log.info("🕵️ Calling GraphRAG for txnId: {}", ragReq.getTxnId());
+        try {
+            String url = graphRagUrl + "/investigate/generate-report";
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("txnId", ragReq.getTxnId());
+            payload.put("payerVpa", ragReq.getPayerVpa());
+            payload.put("payeeVpa", ragReq.getPayeeVpa());
+            payload.put("amount", ragReq.getAmount());
+            payload.put("reason", ragReq.getReason() != null ? ragReq.getReason() : "Investigating transaction pattern");
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = restTemplate.postForObject(url, payload, Map.class);
+
+            if (result != null) {
+                Response response = new Response();
+                response.setMessage("Forensic report generated successfully");
+                response.setStatusCode(200);
+                response.setData(result);
+                return response;
+            } else {
+                Response response = new Response();
+                response.setMessage("No response from GraphRAG service");
+                response.setStatusCode(500);
+                response.setError("Empty response");
+                return response;
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to call GraphRAG: {}", e.getMessage());
+            Response response = new Response();
+            response.setMessage("Failed to generate forensic report");
+            response.setStatusCode(500);
+            response.setError(e.getMessage());
+            return response;
+        }
     }
 }
