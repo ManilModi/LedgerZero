@@ -30,8 +30,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Service for initiating payment transactions.
- * Validates sender, builds fraud data, logs request, and forwards to Switch.
+ * Service for initiating payment transactions. Validates sender, builds fraud
+ * data, logs request, and forwards to Switch.
  */
 @Service
 public class PaymentInitiationService {
@@ -50,17 +50,17 @@ public class PaymentInitiationService {
     private final GatewayLogRepository gatewayLogRepository;
     private final SwitchClient switchClient;
     private final SqsProducerService sqsProducerService;
-    
+
     // Optional - only available when kafka.enabled=true
     private final PaymentNotificationProducer producer;
 
     public PaymentInitiationService(UserRepository userRepository,
-                                    DeviceRepository deviceRepository,
-                                    GatewayLogRepository gatewayLogRepository,
-                                    SwitchClient switchClient,
-                                    SqsProducerService sqsProducerService, 
-                                    @Autowired(required = false) PaymentNotificationProducer producer,
-                                    RestTemplate restTemplate
+            DeviceRepository deviceRepository,
+            GatewayLogRepository gatewayLogRepository,
+            SwitchClient switchClient,
+            SqsProducerService sqsProducerService,
+            @Autowired(required = false) PaymentNotificationProducer producer,
+            RestTemplate restTemplate
     ) {
         this.userRepository = userRepository;
         this.deviceRepository = deviceRepository;
@@ -72,36 +72,31 @@ public class PaymentInitiationService {
     }
 
     /**
-     * Initiates a payment from sender to receiver.
-     * This is the main entry point for payment processing in Gateway.
+     * Initiates a payment from sender to receiver. This is the main entry point
+     * for payment processing in Gateway.
      *
-     * Flow:
-     * 1. Validate sender VPA exists
-     * 2. Validate device is trusted
-     * 3. Rate limit check
-     * 4. Hash MPIN
-     * 5. Build FraudCheckData
-     * 6. Log to GatewayLog
-     * 7. Call Switch via SwitchClient
+     * Flow: 1. Validate sender VPA exists 2. Validate device is trusted 3. Rate
+     * limit check 4. Hash MPIN 5. Build FraudCheckData 6. Log to GatewayLog 7.
+     * Call Switch via SwitchClient
      *
-     * @param payerVpa    Sender's VPA (e.g., "alice@l0")
-     * @param payeeVpa    Receiver's VPA (e.g., "bob@l0")
-     * @param amount      Amount to transfer
-     * @param plainMpin   Raw MPIN entered by user
-     * @param deviceId    Device hardware ID
-     * @param ipAddress   Request IP address
-     * @param geoLat      Geographic latitude
-     * @param geoLong     Geographic longitude
-     * @param wifiSsid    WiFi network name (optional)
-     * @param userAgent   Client user agent
+     * @param payerVpa Sender's VPA (e.g., "alice@l0")
+     * @param payeeVpa Receiver's VPA (e.g., "bob@l0")
+     * @param amount Amount to transfer
+     * @param plainMpin Raw MPIN entered by user
+     * @param deviceId Device hardware ID
+     * @param ipAddress Request IP address
+     * @param geoLat Geographic latitude
+     * @param geoLong Geographic longitude
+     * @param wifiSsid WiFi network name (optional)
+     * @param userAgent Client user agent
      * @return TransactionResponse with status
      */
     @Transactional
     public TransactionResponse initiatePayment(String payerVpa, String payeeVpa,
-                                               BigDecimal amount, String plainMpin,
-                                               String deviceId, String ipAddress,
-                                               Double geoLat, Double geoLong,
-                                               String wifiSsid, String userAgent) {
+            BigDecimal amount, String plainMpin,
+            String deviceId, String ipAddress,
+            Double geoLat, Double geoLong,
+            String wifiSsid, String userAgent) {
 
         String txnId = generateTransactionId();
         log.info("Initiating payment: {} -> {} | Amount: {} | TxnId: {}",
@@ -124,8 +119,6 @@ public class PaymentInitiationService {
             log.warn("Sender KYC not verified: {}", sender.getUserId());
             return buildFailedResponse(txnId, "KYC verification required");
         }
-
-
 
         // Step 3: Validate device is trusted
         Optional<UserDevice> deviceOpt = deviceRepository.findByDeviceId(deviceId);
@@ -165,7 +158,7 @@ public class PaymentInitiationService {
                 .payeeVpa(payeeVpa)
                 .amount(amount)
                 .mpinHash(mpinHash)
-//                .fraudCheckData(fraudData)
+                //                .fraudCheckData(fraudData)
                 .build();
 
         // Step 9: Call Switch service
@@ -215,8 +208,7 @@ public class PaymentInitiationService {
     }
 
     /**
-     * Generates a unique transaction ID.
-     * Format: TXN_<timestamp>_<uuid>
+     * Generates a unique transaction ID. Format: TXN_<timestamp>_<uuid>
      */
     private String generateTransactionId() {
         return "TXN_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
@@ -275,7 +267,7 @@ public class PaymentInitiationService {
         log.info("🕵️ Calling GraphRAG for txnId: {}", ragReq.getTxnId());
         try {
             String url = graphRagUrl + "/investigate/generate-report";
-            
+
             Map<String, Object> payload = new HashMap<>();
             payload.put("txnId", ragReq.getTxnId());
             payload.put("payerVpa", ragReq.getPayerVpa());

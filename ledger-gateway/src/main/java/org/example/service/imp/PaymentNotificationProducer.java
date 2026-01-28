@@ -7,8 +7,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Kafka producer for payment notifications.
- * Only enabled when kafka.enabled=true
+ * Kafka producer for payment notifications. Only enabled when
+ * kafka.enabled=true
  */
 @Service
 @ConditionalOnProperty(name = "kafka.enabled", havingValue = "true", matchIfMissing = false)
