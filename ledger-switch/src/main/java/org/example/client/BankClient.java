@@ -41,7 +41,7 @@ public class BankClient {
         this.sbiBankUrl = sbiBankUrl;
         this.vpaRegistryRepository = vpaRegistryRepository;
         this.restTemplate = restTemplate;
-        this.axisBankUrl = axisBankUrl;
+        this.axisBankUrl = "http://bank-axis:8070";
     }
 
     /**

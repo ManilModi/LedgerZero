@@ -13,7 +13,7 @@ import java.net.URI;
 @Configuration
 public class RedisConfig {
 
-    @Value("${REDIS_URL}")
+    @Value("${spring.data.redis.url}")
     private String redisUrl;
 
     @Bean
