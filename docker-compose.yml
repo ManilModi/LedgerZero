@@ -1,44 +1,172 @@
+version: '3.8'
+
 services:
+  # ============================
+  # 1. INFRASTRUCTURE (Redis Stack, Kafka, Zookeeper)
+  # ============================
+  redis:
+    image: redis/redis-stack:latest
+    container_name: ledger_redis
+    ports:
+      - "6379:6379"   # Redis Protocol
+      - "8001:8001"   # Redis Insight GUI
+    restart: always
+    networks: [java-net]
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: ledger_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks: [java-net]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: ledger_kafka
+    depends_on: [zookeeper]
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xmx400m -Xms400m"
+    restart: always
+    networks: [java-net]
+
+  # ============================
+  # 2. JAVA SERVICES
+  # ============================
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: gateway
+    container_name: ledger_gateway
+    ports: ["8080:8080"]
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx128m
+      - SERVER_PORT=8080
+      - SWITCH_SERVICE_URL=http://switch:8081
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+      # REDIS (Local container)
+      - SPRING_DATA_REDIS_HOST=redis
+
+      # DATABASE (Targeting gateway_db)
+      - RDS_DB_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/gateway_db
+      - RDS_READ_DB_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/gateway_db
+      - RDS_DB_UNAME=postgres
+      - RDS_DB_PASS=Ledger-master-db123
+
+      # AWS SQS & REGION
+      - AWS_CLOUD_CREDENTIALS_ACCESS_KEY=AKIAWFZUPFFJZSHM557V
+      - AWS_CLOUD_CREDENTIALS_SECRET_KEY=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
+      - AWS_CLOUD_REGION=us-east-1
+      - AWS_SQS_QUEUE=https://sqs.us-east-1.amazonaws.com/424774936915/LedgerZeroQueue.fifo
+
+      # APP CONFIG
+      - AWS_ORAGANZING_ID=registration-cfc30b0eaf9a4e9a855d47b200553b7d
+      - JWT_TOKEN=Yboz/BmNzZZTkU8BaWfXXi31wh4r2gItLADh5gM/hBI=
+
+    depends_on: [kafka, redis]
+    restart: always
+    networks: [java-net]
+
+  switch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: switch
+    container_name: ledger_switch
+    ports: ["8081:8081"]
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx128m
+      - SERVER_PORT=8081
+      - BANK_SERVICE_URL=http://bank-axis:8070
+
+      # REDIS (Local container)
+      - SPRING_DATA_REDIS_HOST=redis
+
+      # DATABASE (Targeting switch_db)
+      - SPRING_DATASOURCE_WRITER_JDBC_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/switch_db
+      - SPRING_DATASOURCE_READER_JDBC_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/switch_db
+      - SPRING_DATASOURCE_WRITER_USERNAME=postgres
+      - SPRING_DATASOURCE_WRITER_PASSWORD=Ledger-master-db123
+      - SPRING_DATASOURCE_READER_USERNAME=postgres
+      - SPRING_DATASOURCE_READER_PASSWORD=Ledger-master-db123
+
+      # NEO4J (Pointing to Instance A)
+      - SPRING_NEO4J_URI=bolt://44.207.2.5:7687
+      - SPRING_NEO4J_AUTHENTICATION_USERNAME=neo4j
+      - SPRING_NEO4J_AUTHENTICATION_PASSWORD=password
+
+    depends_on: [kafka, redis]
+    restart: always
+    networks: [java-net]
+
+  bank-axis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: bank
+    container_name: ledger_bank_axis
+    ports: ["8070:8070"]
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx128m
+      - SERVER_PORT=8070
+      - SPRING_PROFILES_ACTIVE=axis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+
+      # REDIS (Local container)
+      - SPRING_REDIS_HOST=redis
+
+      # DATABASE (Targeting axis_db)
+      - AXIS_DB_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/axis_db
+      - AXIS_READ_DB_URL=jdbc:postgresql://ledger-master-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/axis_db
+      - RDS_DB_UNAME=postgres
+      - RDS_DB_PASS=Ledger-master-db123
+
+    depends_on: [kafka, redis]
+    restart: always
+    networks: [java-net]
+
+  # ============================
+  # 3. MONITORING
+  # ============================
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
+    container_name: ledger_prometheus
+    ports: ["9090:9090"]
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9091:9090"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - monitoring
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: always
+    networks: [java-net]
 
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
+    container_name: ledger_grafana
+    ports: ["3000:3000"]
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana-storage:/var/lib/grafana
-    networks:
-      - monitoring
-    depends_on:
-      - prometheus
-
-  postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter
-    container_name: postgres-exporter
-    environment:
-      DATA_SOURCE_NAME: "postgresql://postgres:Ledger-master-db123@ledger-replica-db.cjiaa0ye444g.ap-south-1.rds.amazonaws.com:5432/postgres?sslmode=require"
-    ports:
-      - "9187:9187"
-    networks:
-      - monitoring
-
-networks:
-  monitoring:
-    driver: bridge
+      - grafana_data:/var/lib/grafana
+    depends_on: [prometheus]
+    restart: always
+    networks: [java-net]
 
 volumes:
-  grafana-storage:
+  grafana_data:
+
+networks:
+  java-net:
+    driver: bridge
