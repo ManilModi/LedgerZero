@@ -11,46 +11,48 @@ public class CookieUtil {
     private static final boolean IS_PRODUCTION = false;
 
     public static Cookie createJwtCookie(HttpServletResponse httpServletResponse, String token, int exTime) {
-        //1. create cookie
+
         Cookie cookie = new Cookie(COOKIE_NAME, token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(IS_PRODUCTION); // Only secure in production (HTTPS)
         cookie.setPath("/");
-        cookie.setMaxAge(exTime); // 1 day
+        cookie.setMaxAge(exTime);
 
-        // SameSite attribute for cross-origin requests
-        // For local dev with different ports, use "None" (requires Secure in production)
-        // For same-origin, use "Lax" or "Strict"
-        if (!IS_PRODUCTION) {
-            // For local development, add SameSite=Lax via header
-            httpServletResponse.setHeader("Set-Cookie",
-                    String.format("%s=%s; Path=/; Max-Age=%d; HttpOnly; SameSite=Lax",
-                            COOKIE_NAME, token, exTime));
-        } else {
-            httpServletResponse.addCookie(cookie);
-        }
+        // ❗ Force Secure when FE is HTTPS (cross-site cookies REQUIRE this)
+        cookie.setSecure(true);
+
+        // Always set cookie manually with SameSite=None for cross-origin auth
+        httpServletResponse.setHeader("Set-Cookie",
+                String.format(
+                        "%s=%s; Path=/; Max-Age=%d; HttpOnly; Secure; SameSite=None",
+                        COOKIE_NAME, token, exTime
+                )
+        );
 
         return cookie;
     }
+
 
     /**
      * Clears JWT cookie (Logout)
      */
     public static Cookie clearJwtCookie(HttpServletResponse httpServletResponse) {
-        //1. cookie
+
         Cookie cookie = new Cookie(COOKIE_NAME, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(IS_PRODUCTION);
         cookie.setPath("/");
-        cookie.setMaxAge(0); // ⬅️ delete immediately
+        cookie.setMaxAge(0);
 
-        if (!IS_PRODUCTION) {
-            httpServletResponse.setHeader("Set-Cookie",
-                    String.format("%s=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax", COOKIE_NAME));
-        } else {
-            httpServletResponse.addCookie(cookie);
-        }
+        // Must also be Secure + SameSite=None to delete properly
+        cookie.setSecure(true);
+
+        httpServletResponse.setHeader("Set-Cookie",
+                String.format(
+                        "%s=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=None",
+                        COOKIE_NAME
+                )
+        );
 
         return cookie;
     }
+
 }
