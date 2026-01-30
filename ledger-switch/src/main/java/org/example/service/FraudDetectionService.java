@@ -61,7 +61,9 @@ public class FraudDetectionService {
     @Value("${graphrag.service.url:http://localhost:8000}")
     private String graphRagUrl;
 
+    @Autowired
     private JedisPool redisPool;
+
     private OrtEnvironment env;
     private OrtSession session;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -77,7 +79,6 @@ public class FraudDetectionService {
 
             // 1. Initialize Redis FIRST (Critical: Prevents NPE if AI fails)
             try {
-                this.redisPool = new JedisPool("localhost", 6379);
                 log.info("✅ Redis Pool Initialized");
             } catch (Exception e) {
                 log.error("❌ Redis Init Failed: {}", e.getMessage());

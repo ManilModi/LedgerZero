@@ -87,7 +87,7 @@ public class RouterController {
             try {
                 // If Switch is Local & Python is Docker -> "http://localhost:8000"
                 // If both in Docker -> "http://sync-engine:8000"
-                String url = "http://localhost:8000/sync/transactions";
+                String url = "https://pythonapi.ledgerzero.xyz/sync/transactions";
                 restTemplate.postForLocation(url, null);
                 log.info("🚀 Triggered Graph Sync for successful transaction");
             } catch (Exception e) {

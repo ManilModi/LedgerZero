@@ -1,0 +1,36 @@
+package org.example.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+
+import java.net.URI;
+
+@Configuration
+public class RedisConfig {
+
+    @Value("${spring.data.redis.url}")
+    private String redisUrl;
+
+    @Bean
+    public JedisPool jedisPool() {
+        URI uri = URI.create(redisUrl);
+
+        JedisPoolConfig config = new JedisPoolConfig();
+        config.setMaxTotal(50);
+        config.setMaxIdle(10);
+        config.setMinIdle(2);
+        config.setJmxEnabled(false);
+
+        return new JedisPool(
+                config,
+                uri.getHost(),
+                uri.getPort(),
+                5000,
+                uri.getUserInfo() == null ? null : uri.getUserInfo().split(":", 2)[1],
+                true   // TLS
+        );
+    }
+}

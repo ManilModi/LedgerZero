@@ -10,6 +10,7 @@ import org.example.repository.SwitchTransactionRepository;
 import org.example.repository.VPARegistryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -33,7 +34,8 @@ public class RouterService {
     private final BankClient bankClient;
 
     // ✅ Added Redis Pool for Feedback Loop
-    private final JedisPool redisPool;
+    @Autowired
+    private JedisPool redisPool;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -45,8 +47,7 @@ public class RouterService {
         this.transactionRepository = transactionRepository;
         this.fraudDetectionService = fraudDetectionService;
         this.bankClient = bankClient;
-        // Initialize Redis Pool (Connects to localhost:6379)
-        this.redisPool = new JedisPool("localhost", 6379);
+
     }
 
     /**
@@ -157,7 +158,7 @@ public class RouterService {
             // 2. Trigger Python Graph Sync (Only on success/new edges)
             if (triggerGraphSync) {
                 try {
-                    String url = "http://localhost:8000/sync/transactions";
+                    String url = "https://pythonapi.ledgerzero.xyz/sync/transactions";
                     restTemplate.postForLocation(url, null);
                     log.info("🚀 Triggered Graph Sync for successful transaction");
                 } catch (Exception e) {
