@@ -21,6 +21,60 @@ import { formatCurrency, validateVpa, cn } from '../../utils';
 import type { TransactionResponse, TransactionStatus } from '../../types';
 
 // ============================================
+// ERROR MESSAGE MAPPING
+// ============================================
+
+interface ErrorDetails {
+  title: string;
+  description: string;
+  solution: string;
+}
+
+const getErrorDetails = (errorMessage: string): ErrorDetails => {
+  const errorMap: Record<string, ErrorDetails> = {
+    'Device not trusted': {
+      title: 'Device Not Recognized',
+      description: 'You recently logged in on another device, which automatically logged out this device for security reasons.',
+      solution: 'Please logout and login again on this device to re-register it.',
+    },
+    'Invalid MPIN': {
+      title: 'Incorrect MPIN',
+      description: 'The MPIN you entered is incorrect.',
+      solution: 'Please try again with the correct 6-digit MPIN.',
+    },
+    'Insufficient balance': {
+      title: 'Insufficient Balance',
+      description: 'Your account does not have enough balance for this transaction.',
+      solution: 'Please add funds to your account and try again.',
+    },
+    'Transaction blocked': {
+      title: 'Transaction Blocked',
+      description: 'This transaction was blocked by our fraud detection system.',
+      solution: 'If you believe this is a mistake, please contact support.',
+    },
+    'Session expired': {
+      title: 'Session Expired',
+      description: 'Your login session has expired.',
+      solution: 'Please logout and login again to continue.',
+    },
+  };
+
+  // Find matching error
+  for (const [key, details] of Object.entries(errorMap)) {
+    if (errorMessage.toLowerCase().includes(key.toLowerCase())) {
+      return details;
+    }
+  }
+
+  // Default error
+  return {
+    title: 'Payment Failed',
+    description: errorMessage || 'Something went wrong with your transaction.',
+    solution: 'Please try again or contact support if the issue persists.',
+  };
+};
+
+// ============================================
 // SEND MONEY PAGE
 // ============================================
 
@@ -763,7 +817,7 @@ const ResultStep = ({ result, recipientName, forensicReport, isLoadingForensic, 
           transition={{ delay: 0.3 }}
           className="text-3xl font-bold text-white"
         >
-          {isSuccess ? 'Payment Successful!' : 'Payment Failed'}
+          {isSuccess ? 'Payment Successful!' : getErrorDetails(result.message || '').title}
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}
@@ -773,9 +827,31 @@ const ResultStep = ({ result, recipientName, forensicReport, isLoadingForensic, 
         >
           {isSuccess
             ? `${formatCurrency(result.amount ?? 0)} sent to ${recipientName}`
-            : result.message || 'Something went wrong'}
+            : getErrorDetails(result.message || '').description}
         </motion.p>
       </div>
+
+      {/* Error Details Card - Only show for failures */}
+      {!isSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card className="p-4 space-y-3 border border-amber-500/30 bg-amber-500/5">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-400">What to do next?</p>
+                <p className="text-sm text-slate-300">
+                  {getErrorDetails(result.message || '').solution}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Transaction Details */}
       {isSuccess && result.transactionId && (
