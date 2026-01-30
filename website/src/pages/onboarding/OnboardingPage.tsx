@@ -537,6 +537,14 @@ const SetMpinStep = ({
         <p className="text-lg font-semibold gradient-text">{vpa}</p>
       </div>
 
+      {/* Testing Note */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-xs text-amber-400 font-medium mb-1">🧪 Testing Mode</p>
+        <p className="text-xs text-slate-400">
+          Use <span className="text-amber-300 font-mono">123456</span> as MPIN for these test accounts.
+        </p>
+      </div>
+
       {/* MPIN Inputs */}
       <div className="space-y-4">
         {/* Enter MPIN */}

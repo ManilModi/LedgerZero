@@ -461,6 +461,17 @@ const ModeSelectStep = ({ onSelectLogin, onSelectRegister }: ModeSelectStepProps
         </motion.button>
       </div>
 
+      {/* Testing Note */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-sm text-amber-400 font-medium mb-2">🧪 For Testing</p>
+        <p className="text-xs text-slate-400">
+          Please use <span className="text-amber-300 font-semibold">Login</span> option with pre-registered test accounts.(Click on login you will get the details)
+        </p>
+        <p className="text-xs text-slate-500 mt-2">
+          <span className="text-slate-400">Why?</span> Registration requires your phone number to be linked to a bank account in our partner bank's database. Test accounts are already set up.
+        </p>
+      </div>
+
       <p className="text-center text-xs text-slate-500 pt-4">
         By continuing, you agree to our{' '}
         <a href="#" className="text-primary-400 hover:underline">Terms of Service</a>
@@ -502,6 +513,17 @@ const PhoneStep = ({ phoneNumber, setPhoneNumber, error, isLoading, onSubmit, au
         leftIcon={<Phone size={20} />}
         autoFocus
       />
+
+      {/* Testing Note */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-xs text-amber-400 font-medium mb-2">🧪 Testing Mode</p>
+        <p className="text-xs text-slate-400">
+          Use <span className="text-amber-300 font-mono">7984858394</span> or <span className="text-amber-300 font-mono">9023240018</span> for testing.
+        </p>
+        <p className="text-xs text-slate-500 mt-1">
+          New accounts require pre-registered bank data. These test accounts are ready to use.
+        </p>
+      </div>
 
       <Button
         fullWidth
@@ -579,6 +601,13 @@ const OtpStep = ({ phoneNumber, otp, setOtp, error, isLoading, onSubmit, onResen
       >
         {isDeviceVerification ? 'Verify Device' : 'Verify OTP'}
       </Button>
+
+      {/* Testing Note */}
+      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-xs text-amber-400 text-center">
+          🧪 Use <span className="font-mono font-medium">123456</span> as OTP for testing
+        </p>
+      </div>
 
       <div className="text-center">
         {countdown > 0 ? (
@@ -712,6 +741,13 @@ const LoginStep = ({ phoneNumber, password, setPassword, error, isLoading, onSub
         leftIcon={<Lock size={20} />}
         autoFocus
       />
+
+      {/* Testing Note */}
+      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-xs text-amber-400 text-center">
+          🧪 Use <span className="font-mono font-medium">123456</span> as password for testing
+        </p>
+      </div>
 
       <Button
         fullWidth

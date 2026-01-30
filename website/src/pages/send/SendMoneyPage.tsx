@@ -682,6 +682,13 @@ const MpinStep = ({ mpin, setMpin, error, onSubmit }: MpinStepProps) => {
         error={error}
       />
 
+      {/* Testing Note */}
+      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+        <p className="text-xs text-amber-400 text-center">
+          🧪 Use <span className="font-mono font-medium">123456</span> as MPIN for testing
+        </p>
+      </div>
+
       <p className="text-center text-xs text-slate-500">
         Never share your UPI PIN with anyone
       </p>
