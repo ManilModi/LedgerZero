@@ -89,11 +89,22 @@ api.interceptors.response.use(
     // Handle specific HTTP errors
     const status = error.response?.status;
     
-    if (status === 401) {
-      // Clear auth and redirect to login
+    // ERR_NETWORK with no response often means CORS blocked a 401 response
+    // If user has auth storage but gets network error, treat as session issue
+    const isNetworkError = error.code === 'ERR_NETWORK' && !error.response;
+    const hasAuthStorage = !!localStorage.getItem('auth-storage');
+    
+    if (status === 401 || (isNetworkError && hasAuthStorage)) {
+      // Clear all auth related storage
       localStorage.removeItem('auth-storage');
       localStorage.removeItem('ledger-account');
-      window.location.href = '/auth';
+      
+      // Avoid redirect loop if already on auth page
+      if (!window.location.pathname.includes('/auth')) {
+        console.warn('Session expired or unauthorized - Redirecting to login...');
+        window.location.href = '/auth';
+        return new Promise(() => {}); // Prevent further error handling during redirect
+      }
     }
 
     if (status === 403) {
@@ -322,6 +333,18 @@ export const userApi = {
 // Type-safe response extractor
 export const extractData = <T>(response: { data: ApiResponse<T> }): T | null => {
   return response.data.data;
+};
+
+// Check if error is a 401 Unauthorized (session expired/invalid cookie)
+// Also checks for ERR_NETWORK which happens when CORS blocks a 401 response
+export const is401Error = (error: unknown): boolean => {
+  if (axios.isAxiosError(error)) {
+    // Direct 401 status
+    if (error.response?.status === 401) return true;
+    // ERR_NETWORK with no response (CORS blocked 401)
+    if (error.code === 'ERR_NETWORK' && !error.response) return true;
+  }
+  return false;
 };
 
 // Error message extractor

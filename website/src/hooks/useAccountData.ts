@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { accountApi, extractError, type LinkedAccountData, type TransactionHistoryItem } from '../services/api';
+import { accountApi, extractError, is401Error, type LinkedAccountData, type TransactionHistoryItem } from '../services/api';
 import { useAccountStore, useTransactionStore, useAuthStore, type LinkedAccount, type Transaction } from '../store';
 import { toast } from 'react-hot-toast';
 
@@ -52,7 +52,10 @@ export const useLinkedAccounts = () => {
       }
     } catch (error) {
       console.error('Failed to fetch linked accounts:', error);
-      toast.error(extractError(error));
+      // Don't show toast for 401 - interceptor handles redirect
+      if (!is401Error(error)) {
+        toast.error(extractError(error));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +184,10 @@ export const useTransactionHistory = () => {
       }
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
-      toast.error(extractError(error));
+      // Don't show toast for 401 - interceptor handles redirect
+      if (!is401Error(error)) {
+        toast.error(extractError(error));
+      }
     } finally {
       useTransactionStore.getState().setLoading(false);
     }
